@@ -10,5 +10,11 @@ setuptools.setup(
     install_requires=['consumers'],
     entry_points={
         'console_scripts': ['harmonize=harmonize:main']
-    }
+    },
+    classifiers=(
+        'Development Status :: 4 - Beta',
+        'Intended Audience :: End Users/Desktop',
+        'License :: OSI Approved :: Apache Software License',
+        'Programming Language :: Python :: 3 :: Only'
+    ),
 )
