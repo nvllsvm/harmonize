@@ -1,0 +1,12 @@
+*.egg-info/
+*.pyc
+.cache
+.coverage
+.coverage.*
+.eggs
+__pycache__/
+build/
+dist/
+env/
+htmlcov/
+/.pytest_cache
