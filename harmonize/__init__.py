@@ -1,12 +1,12 @@
 import argparse
+import contextlib
 import logging
+import multiprocessing
 import os
 import pathlib
 import shutil
 import subprocess
 import tempfile
-
-import consumers
 
 LOGGER = logging.getLogger('harmonize')
 
@@ -18,7 +18,7 @@ class Targets:
         :param pathlib.Path base: Base path for all targets
         """
         self.base = base
-        self.paths = []
+        self._paths = set()
 
     def build_target_path(self, source_path, target_root):
         """Return the corresponding MP3 path for a FLAC path
@@ -27,29 +27,28 @@ class Targets:
         :param pathlib.Path target_root: Target root path
         :rtype: pathlib.Path
         """
-        s = source_path.name.split('.')
-        if len(s) > 1 and s[-1].lower() == 'flac':
-            s[-1] = 'mp3'
-            name = '.'.join(s)
+        split_name = source_path.name.split('.')
+        if len(split_name) > 1 and split_name[-1].lower() == 'flac':
+            split_name[-1] = 'mp3'
+            name = '.'.join(split_name)
             if pathlib.Path(source_path.parent, name).exists():
-                raise NotImplemented
-            target_path = pathlib.Path(target_root, name)
+                # TODO: not sure how to handle this
+                raise NotImplementedError
         else:
-            target_path = pathlib.Path(target_root, source_path.name)
-        self.paths.append(target_path)
+            name = source_path.name
+
+        target_path = pathlib.Path(target_root, name)
+        self._paths.add(target_path)
         return target_path
 
     def sanitize(self):
         """Remove unexpected files"""
-        for root, dirs, files in os.walk(self.base):
-            for f in files:
-                p = pathlib.Path(root, f)
-                if p not in self.paths:
-                    LOGGER.warning('Deleting %s', p)
-                    if p.is_dir():
-                        shutil.rmtree(p)
-                    else:
-                        p.unlink()
+        # TODO: remove unexpected directories
+        for root, _, files in os.walk(self.base):
+            for path_str in files:
+                path = pathlib.Path(root, path_str)
+                if path not in self._paths:
+                    delete_if_exists(path)
 
 
 def transcode_and_sync(source_base, target_base):
@@ -59,17 +58,27 @@ def transcode_and_sync(source_base, target_base):
     :param pathlib.Path target_base: Base target path
     """
     targets = Targets(target_base)
+    with multiprocessing.Pool() as pool:
+        pool.starmap(sync_file, get_paths(source_base, targets))
+    targets.sanitize()
 
-    with consumers.Pool(transcode_files) as pool:
-        for root, _, files in os.walk(source_base):
-            rel_root = pathlib.Path(root).relative_to(source_base)
-            new_parent = pathlib.Path(target_base, rel_root)
-            for f in files:
-                source_path = pathlib.Path(root, f)
-                target_path = targets.build_target_path(
-                    source_path, new_parent)
 
-                pool.put(source_path, target_path)
+def get_paths(source_base, targets):
+    """Generator which returns a tuple of source and target paths
+
+    :param pathlib.Path source_base:
+    :param harmonize.Targets targets:
+    :rtype: tuple
+    """
+    for root, _, files in os.walk(source_base):
+        new_parent = pathlib.Path(
+            targets.base,
+            pathlib.Path(root).relative_to(source_base)
+        )
+        for filename in files:
+            source_path = pathlib.Path(root, filename)
+            target_path = targets.build_target_path(source_path, new_parent)
+            yield source_path, target_path
 
 
 def set_mtime(source, target):
@@ -85,7 +94,7 @@ def set_mtime(source, target):
 
 
 def needs_update(source, target):
-    """Return True if a file does not exist or  is out of sync
+    """Return True if a file does not exist or is out of sync
 
     :param pathlib.Path source: Source path
     :param pathlib.Path target: Target path
@@ -96,65 +105,116 @@ def needs_update(source, target):
         return True
 
 
-def transcode_files(paths):
-    for source, target in paths:
-        if needs_update(source, target):
-            update_file(source, target)
+def sync_file(source, target):
+    """Synchronize source file with target if out-of-sync
+
+    :param pathlib.Path source:
+    :param pathlib.Path target:
+    """
+    if needs_update(source, target):
+        if source.suffix.lower() == '.flac':
+            transcode_flac_to_mp3(source, target)
+        else:
+            copy_file_with_mtime(source, target)
 
 
-def update_file(source, target):
-    if source.suffix.lower() == '.flac':
-        transcode_file(source, target)
-    else:
-        copy_file(source, target)
+def copy_file_with_mtime(source, target):
+    """Copy a file while retaining the original's modified time
 
+    Creates parent directories if they do not exist.
 
-def copy_file(source, target):
+    :param pathlib.Path source: Source path
+    :param pathlib.Path source: Target path
+    """
     target.parent.mkdir(parents=True, exist_ok=True)
     shutil.copy(source, target)
     set_mtime(source, target)
 
 
-def decode_flac_to_stdout(source):
-    return subprocess.run(
-        ['flac', '-csdfF', source],
+def decode_flac_to_stdout(path):
+    """Decode a FLAC file to stdout
+
+    Decodes through any errors.
+
+    :param pathlib.Path path: The FLAC file path
+    """
+    command = subprocess.run(
+        ['flac', '-csdF', path],
         stdout=subprocess.PIPE,
-        check=True
-    ).stdout
-
-
-def transcode_to_mp3(source_orig, flac_pipe, target):
-    status = subprocess.run(
-        ['ffmpeg', '-y', '-v', '16',
-         '-i', 'pipe:0',
-         '-i', source_orig,
-         '-map_metadata', '1',
-         '-codec:a', 'libmp3lame',
-         '-qscale:a', '0', target,
-         ],
-        input=flac_pipe,
+        stderr=subprocess.PIPE,
         check=True
     )
-    if status.stderr:
-        raise ValueError('Unable to convert')
+
+    # Decode errors may are non-fatal, but may indicate a problem
+    if command.stderr:
+        LOGGER.warning('Decode "%s" "%s"', path, command.stderr)
+    return command.stdout
 
 
-def transcode_file(source, target):
-    LOGGER.info('Transcoding %s', source)
-    target.parent.mkdir(parents=True, exist_ok=True)
+def delete_if_exists(path):
+    """Delete a file or directory if it exists
+
+    :param pathlib.Path path:
+    """
     try:
-        with tempfile.NamedTemporaryFile(dir=target.parent,
-                                         suffix='.mp3') as tmp:
-            target_temp = pathlib.Path(tmp.name)
-            transcode_to_mp3(
-                source,
-                decode_flac_to_stdout(source),
-                target_temp
-            )
-            set_mtime(source, target_temp)
-            target_temp.rename(target)
+        if path.is_file():
+            path.unlink()
+        else:
+            shutil.rmtree(path)
     except FileNotFoundError:
         pass
+
+
+@contextlib.contextmanager
+def TempPath(**kwargs):
+    """Wrapper around tempfile.NamedTemporaryFile which returns a path object
+
+    Unlike tempfile.NamedTemporaryFile, the FileNotFoundError exception is not
+    raised if the file is deleted before the context closes.
+
+    :rtype: pathlib.Path
+    """
+    with tempfile.NamedTemporaryFile(**kwargs, delete=False) as tmp:
+        temp_path = pathlib.Path(tmp.name)
+        try:
+            yield temp_path
+        except Exception:
+            delete_if_exists(temp_path)
+            raise
+    delete_if_exists(temp_path)
+
+
+def transcode_flac_to_mp3(flac_path, mp3_path):
+    """Transcode a FLAC file to MP3
+
+    :param pathlib.Path flac_path:
+    :param pathlib.Path mp3_path:
+    """
+    LOGGER.info('Transcoding %s', flac_path)
+    mp3_path.parent.mkdir(parents=True, exist_ok=True)
+    with TempPath(dir=mp3_path.parent, suffix='.mp3') as temp_mp3_path:
+        command = subprocess.run(
+            ['ffmpeg', '-y', '-v', '16',
+             '-i', 'pipe:0',
+             '-i', flac_path,
+             '-map_metadata', '1',
+             '-codec:a', 'libmp3lame',
+             '-qscale:a', '0', temp_mp3_path,
+             ],
+            input=decode_flac_to_stdout(flac_path),
+            check=True
+        )
+
+        # Errors happen even if exit code is 0
+        if command.stderr:
+            raise subprocess.CalledProcessError(
+                command.returncode,
+                command.args,
+                output=command.stdout,
+                stderr=command.stderr
+            )
+        set_mtime(flac_path, temp_mp3_path)
+        temp_mp3_path.rename(mp3_path)
 
 
 def main():

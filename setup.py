@@ -7,7 +7,6 @@ setuptools.setup(
     author_email='ar@nullsum.net',
     license='Apache 2.0',
     packages=['harmonize'],
-    install_requires=['consumers'],
     entry_points={
         'console_scripts': ['harmonize=harmonize:main']
     },
