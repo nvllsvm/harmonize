@@ -2,7 +2,7 @@ import setuptools
 
 setuptools.setup(
     name='harmonize',
-    version='0.1.3',
+    version='0.1.4',
     author='Andrew Rabert',
     author_email='ar@nullsum.net',
     description='Create and synchronize transcoded copies of audio folders',

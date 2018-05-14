@@ -1,6 +1,11 @@
 Changelog
 =========
 
+0.1.4 (2018-05-14)
+------------------
+* Add num processes flag
+* Fix paralleization for small folders
+
 0.1.3 (2018-05-14)
 ------------------
 * Add additional logging
