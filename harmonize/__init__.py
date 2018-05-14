@@ -70,6 +70,8 @@ def get_paths(source_base, targets):
     :param harmonize.Targets targets:
     :rtype: tuple
     """
+    LOGGER.info('Scanning "%s"', source_base)
+    count = 0
     for root, _, files in os.walk(source_base):
         new_parent = pathlib.Path(
             targets.base,
@@ -78,8 +80,9 @@ def get_paths(source_base, targets):
         for filename in files:
             source_path = pathlib.Path(root, filename)
             target_path = targets.build_target_path(source_path, new_parent)
+            count += 1
             yield source_path, target_path
-
+    LOGGER.info('Scanned %d items', count)
 
 def set_mtime(source, target):
     """Copy mtime from source to target
@@ -231,6 +234,7 @@ def main():
         pathlib.Path(args.source),
         pathlib.Path(args.target)
     )
+    LOGGER.info('Processing complete')
 
 
 if __name__ == '__main__':
