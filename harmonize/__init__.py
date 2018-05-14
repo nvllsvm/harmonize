@@ -60,7 +60,7 @@ def transcode_and_sync(source_base, target_base, num_processes):
     """
     targets = Targets(target_base)
     with multiprocessing.Pool(num_processes) as pool:
-        pool.starmap(sync_file, get_paths(source_base, targets))
+        pool.starmap(sync_file, get_paths(source_base, targets), 1)
     targets.sanitize()
 
 
