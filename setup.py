@@ -2,9 +2,11 @@ import setuptools
 
 setuptools.setup(
     name='harmonize',
-    version='0.1.0',
+    version='0.1.1',
     author='Andrew Rabert',
     author_email='ar@nullsum.net',
+    description='Create and synchronize transcoded copies of audio folders',
+    long_description=open('DESCRIPTION.rst').read(),
     license='Apache 2.0',
     packages=['harmonize'],
     entry_points={
