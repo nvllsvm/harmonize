@@ -55,7 +55,7 @@ are installed:
 Usage
 -----
 
-.. code:: shell
+.. code::
 
     $ harmonize -h
     usage: harmonize [-h] [-n NUM_PROCESSES] source target
