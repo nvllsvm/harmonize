@@ -51,14 +51,15 @@ class Targets:
                     delete_if_exists(path)
 
 
-def transcode_and_sync(source_base, target_base):
+def transcode_and_sync(source_base, target_base, num_processes):
     """Transcode and/or synchronize a directory recursively
 
     :param pathlib.Path source_base: Base source path
     :param pathlib.Path target_base: Base target path
+    :param int num_processes: Number of processes to use
     """
     targets = Targets(target_base)
-    with multiprocessing.Pool() as pool:
+    with multiprocessing.Pool(num_processes) as pool:
         pool.starmap(sync_file, get_paths(source_base, targets))
     targets.sanitize()
 
@@ -226,13 +227,19 @@ def main():
         'source', help='Source directory')
     parser.add_argument(
         'target', help='Target directory')
+    parser.add_argument(
+        '-n', dest='num_processes',
+        help='Number of processes to use',
+        type=int,
+        default=1)
     args = parser.parse_args()
 
     logging.basicConfig(level=logging.INFO)
 
     transcode_and_sync(
         pathlib.Path(args.source),
-        pathlib.Path(args.target)
+        pathlib.Path(args.target),
+        args.num_processes
     )
     LOGGER.info('Processing complete')
 

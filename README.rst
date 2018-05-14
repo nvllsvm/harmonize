@@ -32,10 +32,10 @@ served me well for a number of years, but had a few drawbacks for my uses.
 * **Not Parallelized** - On a system with eight logical cores and competent
   disk speeds, encoding a one file at a time is a gross inefficiency.
 
-Harmonize transcodes to LAME V0, has no dependency on FUSE, and no dependency
-on external synchronization binaries like rsync. While it currently only
-transcodes to MP3, it's written in Python. This is far more accessible to
-modification for a Pythonista like myself.
+Harmonize transcodes to LAME V0, has no dependency on FUSE, and supports
+parallel copying and transcoding. While it currently only transcodes to MP3,
+it's written in Python. This is far more accessible to modification for a 
+Pythonista like myself.
 
 
 Installation
@@ -58,14 +58,15 @@ Usage
 .. code:: shell
 
     $ harmonize -h
-    usage: harmonize [-h] source target
+    usage: harmonize [-h] [-n NUM_PROCESSES] source target
 
     positional arguments:
-      source      Source directory
-      target      Target directory
+      source            Source directory
+      target            Target directory
 
     optional arguments:
-      -h, --help  show this help message and exit
+      -h, --help        show this help message and exit
+      -n NUM_PROCESSES  Number of processes to use
 
 
 .. |PyPI Version| image:: https://img.shields.io/pypi/v/harmonize.svg?
