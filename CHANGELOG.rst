@@ -1,6 +1,10 @@
 Changelog
 =========
 
+0.1.2 (2018-05-14)
+------------------
+* Add MANIFEST
+
 0.1.1 (2018-05-14)
 ------------------
 * Removed external Python package dependencies
