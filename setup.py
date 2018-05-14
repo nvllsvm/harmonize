@@ -7,6 +7,7 @@ setuptools.setup(
     author_email='ar@nullsum.net',
     description='Create and synchronize transcoded copies of audio folders',
     long_description=open('DESCRIPTION.rst').read(),
+    url='https://github.com/nvllsvm/harmonize',
     license='Apache 2.0',
     packages=['harmonize'],
     entry_points={
