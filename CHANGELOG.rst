@@ -1,6 +1,10 @@
 Changelog
 =========
 
+0.1.5 (2018-05-19)
+------------------
+* Log copies and deletes
+
 0.1.4 (2018-05-14)
 ------------------
 * Add num processes flag
