@@ -48,6 +48,7 @@ class Targets:
             for path_str in files:
                 path = pathlib.Path(root, path_str)
                 if path not in self._paths:
+                    LOGGER.info('Deleteing %s', path)
                     delete_if_exists(path)
 
 
@@ -130,6 +131,7 @@ def copy_file_with_mtime(source, target):
     :param pathlib.Path source: Source path
     :param pathlib.Path source: Target path
     """
+    LOGGER.info('Copying %s', source)
     target.parent.mkdir(parents=True, exist_ok=True)
     shutil.copy(source, target)
     set_mtime(source, target)
