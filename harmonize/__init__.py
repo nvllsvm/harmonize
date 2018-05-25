@@ -48,7 +48,7 @@ class Targets:
             for path_str in files:
                 path = pathlib.Path(root, path_str)
                 if path not in self._paths:
-                    LOGGER.info('Deleteing %s', path)
+                    LOGGER.info('Deleting %s', path)
                     delete_if_exists(path)
 
 
