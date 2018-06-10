@@ -8,6 +8,9 @@ import shutil
 import subprocess
 import tempfile
 
+import mutagen.flac
+import mutagen.mp3
+
 LOGGER = logging.getLogger('harmonize')
 
 
@@ -200,13 +203,7 @@ def transcode_flac_to_mp3(flac_path, mp3_path):
     mp3_path.parent.mkdir(parents=True, exist_ok=True)
     with TempPath(dir=mp3_path.parent, suffix='.mp3') as temp_mp3_path:
         command = subprocess.run(
-            ['ffmpeg', '-y', '-v', '16',
-             '-i', 'pipe:0',
-             '-i', flac_path,
-             '-map_metadata', '1',
-             '-codec:a', 'libmp3lame',
-             '-qscale:a', '0', temp_mp3_path,
-             ],
+            ['lame', '--quiet', '-V', '0', '-', temp_mp3_path],
             input=decode_flac_to_stdout(flac_path),
             check=True
         )
@@ -219,6 +216,13 @@ def transcode_flac_to_mp3(flac_path, mp3_path):
                 output=command.stdout,
                 stderr=command.stderr
             )
+
+        # Copy tags from FLAC to MP3
+        metadata_flac = mutagen.flac.FLAC(flac_path)
+        metadata_mp3 = mutagen.mp3.EasyMP3(temp_mp3_path)
+        metadata_mp3.update(metadata_flac)
+        metadata_mp3.save()
+
         set_mtime(flac_path, temp_mp3_path)
         temp_mp3_path.rename(mp3_path)
 

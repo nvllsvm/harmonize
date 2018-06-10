@@ -8,6 +8,7 @@ setuptools.setup(
     description='Create and synchronize transcoded copies of audio folders',
     long_description=open('README.rst').read(),
     url='https://github.com/nvllsvm/harmonize',
+    install_requires=['mutagen>=1.40.0'],
     license='Apache 2.0',
     packages=['harmonize'],
     entry_points={

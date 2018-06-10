@@ -49,8 +49,8 @@ If installing from `PyPI`_ or using the script directly, ensure the following
 are installed:
 
 * Python 3.6+
-* FFmpeg
 * FLAC
+* LAME
 
 
 Usage

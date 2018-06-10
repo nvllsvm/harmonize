@@ -1,7 +1,7 @@
 FROM alpine:edge
 
 RUN apk update && \
-    apk add ffmpeg flac python3 su-exec && \
+    apk add flac lame python3 su-exec && \
     pip3 install harmonize
 
 VOLUME /source
