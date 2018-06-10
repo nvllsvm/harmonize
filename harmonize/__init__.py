@@ -89,6 +89,7 @@ def get_paths(source_base, targets):
             yield source_path, target_path
     LOGGER.info('Scanned %d items', count)
 
+
 def set_mtime(source, target):
     """Copy mtime from source to target
 
