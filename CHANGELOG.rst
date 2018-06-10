@@ -1,6 +1,10 @@
 Changelog
 =========
 
+Next
+----
+* Remove unexpected directories from target
+
 0.2.0 (2018-06-10)
 ------------------
 * Replace FFmpeg with LAME and mutagen

@@ -16,11 +16,12 @@ LOGGER = logging.getLogger('harmonize')
 
 class Targets:
 
-    def __init__(self, base):
+    def __init__(self, source_base, target_base):
         """
         :param pathlib.Path base: Base path for all targets
         """
-        self.base = base
+        self.target_base = target_base
+        self.source_base = source_base
         self._paths = set()
 
     def build_target_path(self, source_path, target_root):
@@ -45,14 +46,22 @@ class Targets:
         return target_path
 
     def sanitize(self):
-        """Remove unexpected files"""
-        # TODO: remove unexpected directories
-        for root, _, files in os.walk(self.base):
-            for path_str in files:
-                path = pathlib.Path(root, path_str)
-                if path not in self._paths:
-                    LOGGER.info('Deleting %s', path)
-                    delete_if_exists(path)
+        """Remove unexpected files and directories"""
+        for root, _, files in os.walk(self.target_base):
+            root_path = pathlib.Path(root)
+            root_path_source = pathlib.Path(
+                self.source_base,
+                root_path.relative_to(self.target_base)
+            )
+            if root_path_source.is_dir():
+                for path_str in files:
+                    path = pathlib.Path(root, path_str)
+                    if path not in self._paths:
+                        LOGGER.info('Deleting %s', path)
+                        delete_if_exists(path)
+            else:
+                LOGGER.info('Deleting %s', root_path)
+                delete_if_exists(root_path)
 
 
 def transcode_and_sync(source_base, target_base, num_processes):
@@ -62,7 +71,7 @@ def transcode_and_sync(source_base, target_base, num_processes):
     :param pathlib.Path target_base: Base target path
     :param int num_processes: Number of processes to use
     """
-    targets = Targets(target_base)
+    targets = Targets(source_base, target_base)
     with multiprocessing.Pool(num_processes) as pool:
         pool.starmap(sync_file, get_paths(source_base, targets), 1)
     targets.sanitize()
@@ -79,7 +88,7 @@ def get_paths(source_base, targets):
     count = 0
     for root, _, files in os.walk(source_base):
         new_parent = pathlib.Path(
-            targets.base,
+            targets.target_base,
             pathlib.Path(root).relative_to(source_base)
         )
         for filename in files:
