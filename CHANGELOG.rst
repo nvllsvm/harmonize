@@ -1,6 +1,10 @@
 Changelog
 =========
 
+0.2.2 (2018-06-17)
+------------------
+* Fail upon decoding corrupt FLAC files
+* Ignore tagging errors
 
 0.2.1 (2018-06-15)
 ------------------
