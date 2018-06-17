@@ -230,7 +230,11 @@ def transcode_flac_to_mp3(flac_path, mp3_path):
         # Copy tags from FLAC to MP3
         metadata_flac = mutagen.flac.FLAC(flac_path)
         metadata_mp3 = mutagen.mp3.EasyMP3(temp_mp3_path)
-        metadata_mp3.update(metadata_flac)
+        for key, value in metadata_flac.items():
+            try:
+                metadata_mp3[key] = value
+            except KeyError:
+                LOGGER.warning('Cannot set tag "%s" for %s', key, mp3_path)
         metadata_mp3.save()
 
         set_mtime(flac_path, temp_mp3_path)
