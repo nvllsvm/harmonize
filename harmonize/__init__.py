@@ -158,7 +158,7 @@ def decode_flac_to_stdout(path):
     :param pathlib.Path path: The FLAC file path
     """
     command = subprocess.run(
-        ['flac', '-csdF', path],
+        ['flac', '-csd', path],
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         check=True
