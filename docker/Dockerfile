@@ -11,5 +11,5 @@ ENV NUM_PROCESSES 1
 ENV PUID 1000
 ENV PGID 1000
 
-ADD entrypoint.sh /entrypoint.sh
-ENTRYPOINT ["/entrypoint.sh"]
+ENTRYPOINT chown $PUID:$PGID /source /target && \
+           su-exec $PUID:$PGID harmonize -n $NUM_PROCESSES /source /target
