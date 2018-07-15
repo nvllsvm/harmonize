@@ -7,11 +7,8 @@ Create and synchronize transcoded copies of audio folders.
 
 # Environment Variables
 
-**Required**
-- ``PUID`` - User ID to run as.
-- ``PGID`` - Group ID to run as.
-
-**Optional**
+- ``PUID`` - User ID to run as (default 1000).
+- ``PGID`` - Group ID to run as (default 1000).
 - ``NUM_PROCESSES`` - Number of processes to transcode and copy with (default 1).
 
 # Volumes
