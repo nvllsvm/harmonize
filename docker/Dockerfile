@@ -1,8 +1,7 @@
 FROM alpine:edge
 
-RUN apk update && \
-    apk add flac lame python3 su-exec && \
-    pip3 install harmonize
+RUN apk add --no-cache flac lame python3 su-exec && \
+    pip3 install --no-cache-dir harmonize
 
 VOLUME /source
 VOLUME /target
