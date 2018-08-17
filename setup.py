@@ -12,7 +12,7 @@ setuptools.setup(
     license='Apache 2.0',
     packages=['harmonize'],
     entry_points={
-        'console_scripts': ['harmonize=harmonize:main']
+        'console_scripts': ['harmonize=harmonize.app:main']
     },
     classifiers=(
         'Development Status :: 4 - Beta',
