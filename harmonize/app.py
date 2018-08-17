@@ -152,6 +152,7 @@ def copy_file_with_mtime(source, target):
     set_mtime(source, target)
 
 
+@contextlib.contextmanager
 def decode_flac_to_stdout(path):
     """Decode a FLAC file to stdout
 
@@ -159,17 +160,23 @@ def decode_flac_to_stdout(path):
 
     :param pathlib.Path path: The FLAC file path
     """
-    command = subprocess.run(
+    process = subprocess.Popen(
         ['flac', '-csd', path],
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
-        check=True
     )
-
+    yield process
+    process.wait()
     # Decode errors may are non-fatal, but may indicate a problem
-    if command.stderr:
-        LOGGER.warning('Decode "%s" "%s"', path, command.stderr)
-    return command.stdout
+    stderr = process.stderr.read()
+    if process.returncode:
+        raise subprocess.CalledProcessError(
+            process.returncode,
+            process.args,
+            stderr=stderr
+        )
+    if stderr:
+        LOGGER.warning('Decode "%s" "%s"', path, stderr)
 
 
 def delete_if_exists(path):
@@ -213,20 +220,25 @@ def transcode_flac_to_mp3(flac_path, mp3_path):
     """
     LOGGER.info('Transcoding %s', flac_path)
     mp3_path.parent.mkdir(parents=True, exist_ok=True)
+    decode = decode_flac_to_stdout(flac_path)
     with TempPath(dir=mp3_path.parent, suffix='.mp3') as temp_mp3_path:
-        command = subprocess.run(
-            ['lame', '--quiet', '-V', '0', '-', temp_mp3_path],
-            input=decode_flac_to_stdout(flac_path),
-            check=True
-        )
+        with decode_flac_to_stdout(flac_path) as decode:
+            encode = subprocess.Popen(
+                ['lame', '--quiet', '-V', '0', '-', temp_mp3_path],
+                stdin=decode.stdout,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+            )
+        encode.wait()
 
         # Errors happen even if exit code is 0
-        if command.stderr:
+        stderr = encode.stderr.read()
+        if encode.returncode or stderr:
             raise subprocess.CalledProcessError(
-                command.returncode,
-                command.args,
-                output=command.stdout,
-                stderr=command.stderr
+                encode.returncode,
+                encode.args,
+                output=encode.stdout.read(),
+                encode=stderr
             )
 
         # Copy tags from FLAC to MP3
