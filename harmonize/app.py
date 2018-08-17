@@ -6,7 +6,6 @@ import os
 import pathlib
 import shutil
 import subprocess
-import sys
 import tempfile
 
 import mutagen.flac
@@ -259,10 +258,6 @@ def main():
         '--version', action='version', version=harmonize.__version__
     )
     args = parser.parse_args()
-
-    if args.version:
-        print(harmonize.__version__)
-        sys.exit()
 
     logging.basicConfig(level=logging.INFO)
 
