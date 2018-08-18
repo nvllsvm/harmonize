@@ -1,8 +1,11 @@
 import setuptools
 
+import harmonize
+
+
 setuptools.setup(
     name='harmonize',
-    version='0.2.2',
+    version=harmonize.__version__,
     author='Andrew Rabert',
     author_email='ar@nullsum.net',
     description='Create and synchronize transcoded copies of audio folders',
