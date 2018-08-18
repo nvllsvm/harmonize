@@ -1,6 +1,10 @@
 Changelog
 =========
 
+0.3.1 (2018-08-17)
+------------------
+* Revert app import exposure
+
 0.3.0 (2018-08-17)
 ------------------
 * Drastically reduce memory consumption by simultaneously decoding and encoding
