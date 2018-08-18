@@ -1,6 +1,10 @@
 Changelog
 =========
 
+0.3.0 (2018-08-17)
+------------------
+* Drastically reduce memory consumption by simultaneously decoding and encoding
+
 0.2.2 (2018-06-17)
 ------------------
 * Fail upon decoding corrupt FLAC files

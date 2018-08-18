@@ -1,4 +1,4 @@
 from .app import *
 
-version_info = (0, 2, 2)
+version_info = (0, 3, 0)
 __version__ = '.'.join(str(n) for n in version_info)
