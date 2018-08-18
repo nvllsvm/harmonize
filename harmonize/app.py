@@ -229,7 +229,7 @@ def transcode_flac_to_mp3(flac_path, mp3_path):
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
             )
-        encode.wait()
+            encode.wait()
 
         # Errors happen even if exit code is 0
         stderr = encode.stderr.read()
