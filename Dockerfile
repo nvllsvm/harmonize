@@ -9,5 +9,5 @@ RUN apk add flac lame su-exec && \
     rm -rf ~/.cache /var/cache/apk/*
 VOLUME /source /target
 ENV NUM_PROCESSES=1 PUID=1000 PGID=1000
-ENTRYPOINT chown $PUID:$PGID /source /target && \
+ENTRYPOINT chown $PUID:$PGID /target && \
            su-exec $PUID:$PGID harmonize -n $NUM_PROCESSES /source /target
