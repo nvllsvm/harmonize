@@ -68,6 +68,7 @@ Usage
     optional arguments:
       -h, --help        show this help message and exit
       -n NUM_PROCESSES  Number of processes to use
+      -V VBR_PROFILE    VBR profile to use for encoder
 
 
 .. |PyPI Version| image:: https://img.shields.io/pypi/v/harmonize.svg?
