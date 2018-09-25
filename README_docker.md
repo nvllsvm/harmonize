@@ -10,6 +10,7 @@ Create and synchronize transcoded copies of audio folders.
 - ``PUID`` - User ID to run as (default 1000).
 - ``PGID`` - Group ID to run as (default 1000).
 - ``NUM_PROCESSES`` - Number of processes to transcode and copy with (default 1).
+- ``VBR_PROFILE`` - Profile to use for VBR encoding (default 0)
 
 # Volumes
 

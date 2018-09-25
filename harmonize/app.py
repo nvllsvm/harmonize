@@ -39,6 +39,7 @@ class Targets:
             name = '.'.join(split_name)
             if pathlib.Path(source_path.parent, name).exists():
                 # TODO: not sure how to handle this
+                LOGGER.error('Duplicate file found (FLAC & MP3): %s', source_path)
                 raise NotImplementedError
         else:
             name = source_path.name
@@ -221,10 +222,10 @@ def transcode_flac_to_mp3(flac_path, mp3_path):
     LOGGER.info('Transcoding %s', flac_path)
     mp3_path.parent.mkdir(parents=True, exist_ok=True)
     decode = decode_flac_to_stdout(flac_path)
-    with TempPath(dir=mp3_path.parent, suffix='.mp3') as temp_mp3_path:
+    with TempPath(dir=mp3_path.parent, suffix='.mp3.temp') as temp_mp3_path:
         with decode_flac_to_stdout(flac_path) as decode:
             encode = subprocess.Popen(
-                ['lame', '--quiet', '-V', '0', '-', temp_mp3_path],
+                ['lame', '--quiet', '-V', str(args.vbr_profile), '-', temp_mp3_path],
                 stdin=decode.stdout,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
@@ -267,8 +268,16 @@ def main():
         type=int,
         default=1)
     parser.add_argument(
+        '-V', dest='vbr_profile',
+        help='VBR profile to use for encoder',
+        type=int,
+        default=0)
+    parser.add_argument(
         '--version', action='version', version=harmonize.__version__
     )
+
+    global args
+
     args = parser.parse_args()
 
     logging.basicConfig(level=logging.INFO)
