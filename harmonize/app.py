@@ -222,7 +222,7 @@ def transcode_flac_to_mp3(flac_path, mp3_path):
     LOGGER.info('Transcoding %s', flac_path)
     mp3_path.parent.mkdir(parents=True, exist_ok=True)
     decode = decode_flac_to_stdout(flac_path)
-    with TempPath(dir=mp3_path.parent, suffix='.mp3') as temp_mp3_path:
+    with TempPath(dir=mp3_path.parent, suffix='.mp3.temp') as temp_mp3_path:
         with decode_flac_to_stdout(flac_path) as decode:
             encode = subprocess.Popen(
                 ['lame', '--quiet', '-V', '0', '-', temp_mp3_path],
