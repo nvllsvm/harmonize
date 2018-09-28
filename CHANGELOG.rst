@@ -1,6 +1,12 @@
 Changelog
 =========
 
+Next
+----
+* Stop chowning /source folder (Dominik)
+* Use `.temp` extension for temporary filenames (Dominik)
+* Log error when file already exists (Dominik)
+
 0.3.1 (2018-08-17)
 ------------------
 * Revert app import exposure
