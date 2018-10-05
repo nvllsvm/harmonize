@@ -1,8 +1,8 @@
 Changelog
 =========
 
-Next
-----
+0.3.2 (2018-10-05)
+------------------
 * Stop chowning /source folder (Dominik)
 * Use `.temp` extension for temporary filenames (Dominik)
 * Log error when file already exists (Dominik)
