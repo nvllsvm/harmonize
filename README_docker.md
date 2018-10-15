@@ -7,8 +7,6 @@ Create and synchronize transcoded copies of audio folders.
 
 # Environment Variables
 
-- ``PUID`` - User ID to run as (default 1000).
-- ``PGID`` - Group ID to run as (default 1000).
 - ``NUM_PROCESSES`` - Number of processes to transcode and copy with (default 1).
 
 # Volumes
@@ -18,11 +16,13 @@ Create and synchronize transcoded copies of audio folders.
 
 # Usage
 
+You probably want to use the ``--user`` option to ensure the target files are
+created with a specific UID and GID.
+
 ```
 $ docker run \
+    --user 1000:1000 \
     -e NUM_PROCESSES=8 \
-    -e PUID=1000 \
-    -e PGID=100 \
     -v /media/flac:/source \
     -v /media/mp3:/target \
     nvllsvm/harmonize
