@@ -5,16 +5,9 @@ Create and synchronize transcoded copies of audio folders.
 * Parallelized
 * Additional runs synchronize changes since the initial run
 
-# Environment Variables
-
-- ``NUM_PROCESSES`` - Number of processes to transcode and copy with (default 1).
-
-# Volumes
-
-- ``/source`` - Source directory
-- ``/target`` - Target directory
-
 # Usage
+
+The Docker container uses harmonize as the entrypoint, passing any arguments to it.
 
 You probably want to use the ``--user`` option to ensure the target files are
 created with a specific UID and GID.
@@ -22,9 +15,8 @@ created with a specific UID and GID.
 ```
 $ docker run \
     --user 1000:1000 \
-    -e NUM_PROCESSES=8 \
-    -v /media/flac:/source \
-    -v /media/mp3:/target \
-    nvllsvm/harmonize
+    -v /media/flac:/media/flac \
+    -v /media/mp3:/media/mp3 \
+    nvllsvm/harmonize /media/flac /media/mp3
 ```
 
