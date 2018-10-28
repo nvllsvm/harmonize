@@ -58,8 +58,7 @@ Usage
 
 .. code::
 
-    $ harmonize -h
-    usage: harmonize [-h] [-n NUM_PROCESSES] source target
+    usage: harmonize [-h] [-n NUM_PROCESSES] [--version] source target
 
     positional arguments:
       source            Source directory
@@ -68,6 +67,7 @@ Usage
     optional arguments:
       -h, --help        show this help message and exit
       -n NUM_PROCESSES  Number of processes to use
+      --version         show program's version number and exit
 
 
 .. |PyPI Version| image:: https://img.shields.io/pypi/v/harmonize.svg?
