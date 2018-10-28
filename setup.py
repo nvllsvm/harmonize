@@ -1,11 +1,8 @@
 import setuptools
 
-import harmonize
-
 
 setuptools.setup(
     name='harmonize',
-    version=harmonize.__version__,
     author='Andrew Rabert',
     author_email='ar@nullsum.net',
     description='Create and synchronize transcoded copies of audio folders',
@@ -23,4 +20,6 @@ setuptools.setup(
         'License :: OSI Approved :: Apache Software License',
         'Programming Language :: Python :: 3 :: Only'
     ],
+    setup_requires=['setuptools_scm'],
+    use_scm_version=True
 )
