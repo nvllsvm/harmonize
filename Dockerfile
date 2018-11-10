@@ -3,7 +3,8 @@ ARG BASE_IMAGE=python:alpine
 FROM ${BASE_IMAGE} as builder
 WORKDIR /repo
 COPY . .
-RUN python setup.py bdist_wheel
+RUN apk add git && \
+    python setup.py bdist_wheel
 
 FROM ${BASE_IMAGE}
 COPY --from=builder /repo/dist /dist
