@@ -20,6 +20,7 @@ setuptools.setup(
         'License :: OSI Approved :: Apache Software License',
         'Programming Language :: Python :: 3 :: Only'
     ],
+    python_requires='>=3.6',
     setup_requires=['setuptools_scm'],
     use_scm_version=True
 )
