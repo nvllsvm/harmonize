@@ -5,6 +5,7 @@ WORKDIR /repo
 COPY . .
 RUN apk add git && \
     python setup.py check && \
+    rm -rf dist && \
     python setup.py bdist_wheel
 
 FROM ${BASE_IMAGE}
