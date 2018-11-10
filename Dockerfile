@@ -4,6 +4,7 @@ FROM ${BASE_IMAGE} as builder
 WORKDIR /repo
 COPY . .
 RUN apk add git && \
+    python setup.py check && \
     python setup.py bdist_wheel
 
 FROM ${BASE_IMAGE}
