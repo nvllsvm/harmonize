@@ -6,7 +6,6 @@ RUN python setup.py bdist_wheel
 
 FROM ${BASE_IMAGE}
 COPY --from=builder /dist /dist
-RUN apk add flac lame && \
-    pip install /dist/*whl && \
-    rm -rf ~/.cache /var/cache/apk/*
+RUN apk add --no-cache flac lame && \
+    pip install --no-cache-dir /dist/*whl
 ENTRYPOINT ["harmonize"]
