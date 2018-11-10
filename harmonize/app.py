@@ -10,10 +10,14 @@ import tempfile
 
 import mutagen.flac
 import mutagen.mp3
-
-import harmonize
+import pkg_resources
 
 LOGGER = logging.getLogger('harmonize')
+
+try:
+    VERSION = pkg_resources.get_distribution('harmonize').version
+except pkg_resources.DistributionNotFound:
+    VERSION = 'unknown'
 
 
 class Targets:
@@ -268,7 +272,7 @@ def main():
         type=int,
         default=1)
     parser.add_argument(
-        '--version', action='version', version=harmonize.__version__
+        '--version', action='version', version=VERSION,
     )
     args = parser.parse_args()
 
