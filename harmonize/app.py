@@ -43,7 +43,9 @@ class Targets:
             name = '.'.join(split_name)
             if pathlib.Path(source_path.parent, name).exists():
                 # TODO: not sure how to handle this
-                LOGGER.error('Duplicate file found (FLAC & MP3): %s', source_path)
+                LOGGER.error(
+                    'Duplicate file found (FLAC & MP3): %s', source_path
+                )
                 raise NotImplementedError
         else:
             name = source_path.name
