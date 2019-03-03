@@ -265,9 +265,9 @@ def transcode_flac_to_mp3(flac_path, mp3_path):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        'source', help='Source directory')
+        'source', type=pathlib.Path, help='Source directory')
     parser.add_argument(
-        'target', help='Target directory')
+        'target', type=pathlib.Path, help='Target directory')
     parser.add_argument(
         '-n', dest='num_processes',
         help='Number of processes to use',
@@ -280,11 +280,7 @@ def main():
 
     logging.basicConfig(level=logging.INFO)
 
-    transcode_and_sync(
-        pathlib.Path(args.source),
-        pathlib.Path(args.target),
-        args.num_processes
-    )
+    transcode_and_sync(args.source, args.target, args.num_processes)
     LOGGER.info('Processing complete')
 
 
