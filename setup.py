@@ -1,5 +1,8 @@
+import pathlib
+
 import setuptools
 
+REPO = pathlib.Path(__file__).parent
 
 setuptools.setup(
     name='harmonize',
@@ -7,7 +10,7 @@ setuptools.setup(
     author='Andrew Rabert',
     author_email='ar@nullsum.net',
     description='Create and synchronize transcoded copies of audio folders',
-    long_description=open('README.rst').read(),
+    long_description=REPO.joinpath('README.rst').read_text(),
     url='https://github.com/nvllsvm/harmonize',
     install_requires=['mutagen>=1.40.0'],
     license='Apache 2.0',
