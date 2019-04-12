@@ -1,14 +1,16 @@
-ARG BASE_IMAGE=python:alpine
+FROM python:alpine as base
 
-FROM ${BASE_IMAGE} as builder
-WORKDIR /repo
+FROM base as builder
+WORKDIR /src
 COPY . .
 RUN python setup.py check && \
     rm -rf dist && \
     python setup.py bdist_wheel
 
-FROM ${BASE_IMAGE}
-COPY --from=builder /repo/dist /dist
+FROM base
+LABEL url="https://github.com/nvllsvm/harmonize"
+COPY --from=builder /src/dist /dist
 RUN apk add --no-cache flac lame && \
-    pip install --no-cache-dir /dist/*whl
+    pip install --no-cache-dir /dist/*whl && \
+    rm -r /dist
 ENTRYPOINT ["harmonize"]
