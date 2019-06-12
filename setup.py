@@ -16,7 +16,7 @@ setuptools.setup(
     license='Apache 2.0',
     packages=['harmonize'],
     entry_points={
-        'console_scripts': ['harmonize=harmonize.app:main']
+        'console_scripts': ['harmonize=harmonize.__main__:main']
     },
     classifiers=[
         'Development Status :: 4 - Beta',
