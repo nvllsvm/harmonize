@@ -120,6 +120,15 @@ def set_mtime(source, target):
     )
 
 
+def copy_file_mode(source, target):
+    """Copy file mode and permissions
+
+    :param pathlib.Path source: Source path
+    :param pathlib.Path target: Target path
+    """
+    target.chmod(source.stat().st_mode)
+
+
 def needs_update(source, target):
     """Return True if a file does not exist or is out of sync
 
@@ -259,6 +268,7 @@ def transcode_flac_to_mp3(flac_path, mp3_path):
         metadata_mp3.save()
 
         set_mtime(flac_path, temp_mp3_path)
+        copy_file_mode(flac_path, temp_mp3_path)
         temp_mp3_path.rename(mp3_path)
 
 
