@@ -222,10 +222,8 @@ def TempPath(**kwargs):
         temp_path = pathlib.Path(tmp.name)
         try:
             yield temp_path
-        except Exception:
+        finally:
             delete_if_exists(temp_path)
-            raise
-    delete_if_exists(temp_path)
 
 
 def transcode_flac_to_mp3(flac_path, mp3_path):
