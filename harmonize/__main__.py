@@ -286,7 +286,7 @@ def main():
     )
     args = parser.parse_args()
 
-    logging.basicConfig(level=logging.INFO)
+    logging.basicConfig(format='%(message)s', level=logging.INFO)
 
     transcode_and_sync(args.source, args.target, args.num_processes)
     LOGGER.info('Processing complete')
