@@ -1,6 +1,13 @@
 Changelog
 =========
 
+0.4.0 (2019-10-019)
+------------------
+* Add `--quiet` flag
+* Copy file mode
+* Add __main__
+* Misc cleanup
+
 0.3.2 (2018-10-05)
 ------------------
 * Stop chowning /source folder (Dominik)
