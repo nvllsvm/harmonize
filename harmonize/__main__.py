@@ -282,11 +282,16 @@ def main():
         type=int,
         default=1)
     parser.add_argument(
+        '-q', '--quiet', action='store_true',
+        help='suppress informational output')
+    parser.add_argument(
         '--version', action='version', version=VERSION,
     )
     args = parser.parse_args()
 
-    logging.basicConfig(format='%(message)s', level=logging.INFO)
+    logging.basicConfig(
+        format='%(message)s',
+        level=logging.WARNING if args.quiet else logging.INFO)
 
     transcode_and_sync(args.source, args.target, args.num_processes)
     LOGGER.info('Processing complete')
