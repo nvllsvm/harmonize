@@ -1,7 +1,13 @@
 Changelog
 =========
 
-0.4.0 (2019-10-019)
+1.0.0 (2019-11-23)
+------------------
+* Add opus support
+* Make encoders configurable
+* Refactor
+
+0.4.0 (2019-10-19)
 ------------------
 * Add `--quiet` flag
 * Copy file mode
