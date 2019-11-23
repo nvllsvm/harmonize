@@ -6,7 +6,7 @@ REPO = pathlib.Path(__file__).parent
 
 setuptools.setup(
     name='harmonize',
-    version='1.0.0',
+    version='1.0.1',
     author='Andrew Rabert',
     author_email='ar@nullsum.net',
     description='Create and synchronize transcoded copies of audio folders',

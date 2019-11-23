@@ -1,6 +1,10 @@
 Changelog
 =========
 
+1.0.1 (2019-11-23)
+------------------
+* Fix double .. in file extension
+
 1.0.0 (2019-11-23)
 ------------------
 * Add opus support
