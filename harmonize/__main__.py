@@ -41,7 +41,7 @@ class Targets:
         """
         split_name = source_path.name.split('.')
         if len(split_name) > 1 and split_name[-1].lower() == 'flac':
-            split_name[-1] = f'.{self.target_codec}'
+            split_name[-1] = self.target_codec
             name = '.'.join(split_name)
             if pathlib.Path(source_path.parent, name).exists():
                 # TODO: not sure how to handle this
