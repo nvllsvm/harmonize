@@ -5,10 +5,11 @@ harmonize
 
 Create and synchronize transcoded copies of audio folders.
 
-* Transcodes FLAC files to MP3 with tags
+* Transcodes FLAC files to MP3 or FLAC with tags
 * Copies everything else as-is
 * Parallelized
 * Additional runs synchronize changes since the initial run
+* Configurable encoders
 
 
 History
@@ -50,7 +51,8 @@ are installed:
 
 * Python 3.6+
 * FLAC
-* LAME
+* LAME (when using mp3)
+* opusenc (when using opus)
 
 
 Usage
@@ -58,16 +60,20 @@ Usage
 
 .. code::
 
-    usage: harmonize [-h] [-n NUM_PROCESSES] [--version] source target
+    usage: harmonize [-h] [--codec {mp3,opus}] [-n NUM_PROCESSES] [-q] [--version]
+                     source target
 
     positional arguments:
-      source            Source directory
-      target            Target directory
+      source              Source directory
+      target              Target directory
 
     optional arguments:
-      -h, --help        show this help message and exit
-      -n NUM_PROCESSES  Number of processes to use
-      --version         show program's version number and exit
+      -h, --help          show this help message and exit
+      --codec {mp3,opus}  codec to output as. encoder configuration may be
+                          specified as additional arguments to harmonize
+      -n NUM_PROCESSES    Number of processes to use
+      -q, --quiet         suppress informational output
+      --version           show program's version number and exit
 
 
 .. |PyPI Version| image:: https://img.shields.io/pypi/v/harmonize.svg?

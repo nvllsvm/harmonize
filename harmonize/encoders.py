@@ -1,9 +1,9 @@
 import subprocess
 
 
-def lame(stdin, target):
+def lame(stdin, target, options=[]):
     encode = subprocess.Popen(
-        ['lame', '--quiet', '-V', '0', '-', target],
+        ['lame', '--quiet', *[str(o) for o in options], '-', target],
         stdin=stdin,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
@@ -19,3 +19,13 @@ def lame(stdin, target):
             output=encode.stdout.read(),
             encode=stderr
         )
+
+
+def opus(stdin, target, options=[]):
+    subprocess.run(
+        ['opusenc', '--quiet', *[str(o) for o in options], '-', target],
+        stdin=stdin,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        check=True
+    )

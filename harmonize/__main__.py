@@ -1,6 +1,7 @@
 import argparse
-import contextlib
 import concurrent.futures
+import contextlib
+import functools
 import logging
 import os
 import pathlib
@@ -23,13 +24,13 @@ except pkg_resources.DistributionNotFound:
 
 class Targets:
 
-    def __init__(self, source_base, target_base, target_ext):
+    def __init__(self, source_base, target_base, target_codec):
         """
         :param pathlib.Path base: Base path for all targets
         """
         self.target_base = target_base
         self.source_base = source_base
-        self.target_ext = target_ext
+        self.target_codec = target_codec
         self._paths = set()
 
     def build_target_path(self, source_path):
@@ -40,7 +41,7 @@ class Targets:
         """
         split_name = source_path.name.split('.')
         if len(split_name) > 1 and split_name[-1].lower() == 'flac':
-            split_name[-1] = self.target_ext
+            split_name[-1] = f'.{self.target_codec}'
             name = '.'.join(split_name)
             if pathlib.Path(source_path.parent, name).exists():
                 # TODO: not sure how to handle this
@@ -101,24 +102,6 @@ class Targets:
         LOGGER.info('Scanned %d items', count)
 
 
-def transcode_and_sync(source_base, target_base, target_ext, num_processes):
-    """Transcode and/or synchronize a directory recursively
-
-    :param pathlib.Path source_base: Base source path
-    :param pathlib.Path target_base: Base target path
-    :param int num_processes: Number of processes to use
-    """
-    targets = Targets(source_base, target_base, target_ext)
-    with concurrent.futures.ProcessPoolExecutor(num_processes) as executor:
-        futures = [
-            executor.submit(sync_file, source, target)
-            for source, target in sorted(targets._get_paths())
-        ]
-        for future in concurrent.futures.as_completed(futures):
-            future.result()
-    targets.sanitize()
-
-
 def _all_files(root):
     """Return a list of all files under a root path"""
     files = []
@@ -132,7 +115,7 @@ def _all_files(root):
     return files
 
 
-def sync_file(source, target):
+def sync_file(source, target, encoder):
     """Synchronize source file with target if out-of-sync
 
     :param pathlib.Path source:
@@ -144,7 +127,7 @@ def sync_file(source, target):
     target.parent.mkdir(parents=True, exist_ok=True)
     with TempPath(dir=target.parent, suffix='.temp') as temp_target:
         if source.suffix.lower() == '.flac':
-            transcode(decoders.flac, encoders.lame, source, temp_target)
+            transcode(decoders.flac, encoder, source, temp_target)
             copy_audio_metadata(source, temp_target)
         else:
             copy(source, temp_target)
@@ -215,12 +198,18 @@ def transcode(decoder, encoder, source, target):
         encoder(decoded, target)
 
 
+_CODEC_ENCODERS = {
+    'mp3': encoders.lame,
+    'opus': encoders.opus
+}
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        'source', type=pathlib.Path, help='Source directory')
-    parser.add_argument(
-        'target', type=pathlib.Path, help='Target directory')
+        '--codec', default='mp3', choices=_CODEC_ENCODERS,
+        help=('codec to output as. encoder configuration may be specified as '
+              'additional arguments to harmonize'))
     parser.add_argument(
         '-n', dest='num_processes',
         help='Number of processes to use',
@@ -232,13 +221,29 @@ def main():
     parser.add_argument(
         '--version', action='version', version=VERSION,
     )
-    args = parser.parse_args()
+    parser.add_argument(
+        'source', type=pathlib.Path, help='Source directory')
+    parser.add_argument(
+        'target', type=pathlib.Path, help='Target directory')
+
+    args, encoder_options = parser.parse_known_args()
 
     logging.basicConfig(
         format='%(message)s',
         level=logging.WARNING if args.quiet else logging.INFO)
 
-    transcode_and_sync(args.source, args.target, 'mp3', args.num_processes)
+    encoder = functools.partial(
+        _CODEC_ENCODERS[args.codec], options=encoder_options)
+    targets = Targets(args.source, args.target, args.codec)
+    with concurrent.futures.ProcessPoolExecutor(args.num_processes) as pool:
+        futures = [
+            pool.submit(sync_file, source, target, encoder)
+            for source, target in sorted(targets._get_paths())
+        ]
+        for future in concurrent.futures.as_completed(futures):
+            future.result()
+    targets.sanitize()
+
     LOGGER.info('Processing complete')
 
 
