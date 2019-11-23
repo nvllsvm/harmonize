@@ -5,7 +5,7 @@ harmonize
 
 Create and synchronize transcoded copies of audio folders.
 
-* Transcodes FLAC files to MP3 or FLAC with tags
+* Transcodes FLAC files to MP3 or Opus with tags
 * Copies everything else as-is
 * Parallelized
 * Additional runs synchronize changes since the initial run
