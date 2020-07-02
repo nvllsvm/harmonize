@@ -121,7 +121,10 @@ def sync_file(source, target, encoder):
     :param pathlib.Path source:
     :param pathlib.Path target:
     """
-    if target.exists() and target.lstat().st_mtime == source.lstat().st_mtime:
+    # lstat the source only as source file may change during transcode
+    source_mtime = source.lstat().st_mtime
+
+    if target.exists() and target.lstat().st_mtime == source_mtime:
         return
 
     target.parent.mkdir(parents=True, exist_ok=True)
@@ -134,7 +137,7 @@ def sync_file(source, target, encoder):
         temp_target.chmod(source.stat().st_mode)
         os.utime(
             temp_target,
-            (temp_target.lstat().st_atime, source.lstat().st_mtime)
+            (temp_target.lstat().st_atime, source_mtime)
         )
         temp_target.rename(target)
 
