@@ -1,6 +1,10 @@
 Changelog
 =========
 
+1.0.2 (2020-07-02)
+------------------
+* Read source mtime only once as source may change during transcode
+
 1.0.1 (2019-11-23)
 ------------------
 * Fix double .. in file extension
