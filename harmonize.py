@@ -6,13 +6,12 @@ import logging
 import os
 import pathlib
 import shutil
+import subprocess
 import tempfile
 
 import mutagen
 import mutagen.mp3
 import pkg_resources
-
-from . import decoders, encoders
 
 LOGGER = logging.getLogger('harmonize')
 
@@ -102,6 +101,72 @@ class Targets:
         LOGGER.info('Scanned %d items', count)
 
 
+class LAME:
+
+    @staticmethod
+    def encode(stdin, target, options=[]):
+        encode = subprocess.Popen(
+            ['lame', '--quiet', *[str(o) for o in options], '-', target],
+            stdin=stdin,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+        encode.wait()
+
+        # Errors happen even if exit code is 0
+        stderr = encode.stderr.read()
+        if encode.returncode or stderr:
+            raise subprocess.CalledProcessError(
+                encode.returncode,
+                encode.args,
+                output=encode.stdout.read(),
+                encode=stderr
+            )
+
+
+class Opus:
+
+    @staticmethod
+    def encode(stdin, target, options=[]):
+        subprocess.run(
+            ['opusenc', '--quiet', *[str(o) for o in options], '-', target],
+            stdin=stdin,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            check=True
+        )
+
+
+class FLAC:
+
+    @staticmethod
+    @contextlib.contextmanager
+    def decode(path):
+        """Decode a FLAC file
+
+        Decodes through any errors.
+
+        :param pathlib.Path path: The FLAC file path
+        """
+        process = subprocess.Popen(
+            ['flac', '-csd', path],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+        yield process.stdout
+        process.wait()
+        # Decode errors may are non-fatal, but may indicate a problem
+        stderr = process.stderr.read()
+        if process.returncode:
+            raise subprocess.CalledProcessError(
+                process.returncode,
+                process.args,
+                stderr=stderr
+            )
+        if stderr:
+            LOGGER.warning('Decode "%s" "%s"', path, stderr)
+
+
 def _all_files(root):
     """Return a list of all files under a root path"""
     files = []
@@ -130,7 +195,7 @@ def sync_file(source, target, encoder):
     target.parent.mkdir(parents=True, exist_ok=True)
     with TempPath(dir=target.parent, suffix='.temp') as temp_target:
         if source.suffix.lower() == '.flac':
-            transcode(decoders.flac, encoder, source, temp_target)
+            transcode(FLAC.decode, encoder, source, temp_target)
             copy_audio_metadata(source, temp_target)
         else:
             copy(source, temp_target)
@@ -202,8 +267,8 @@ def transcode(decoder, encoder, source, target):
 
 
 _CODEC_ENCODERS = {
-    'mp3': encoders.lame,
-    'opus': encoders.opus
+    'mp3': LAME.encode,
+    'opus': Opus.encode,
 }
 
 

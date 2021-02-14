@@ -14,9 +14,9 @@ setuptools.setup(
     url='https://github.com/nvllsvm/harmonize',
     install_requires=['mutagen>=1.40.0'],
     license='Apache 2.0',
-    packages=['harmonize'],
+    py_modules=['harmonize'],
     entry_points={
-        'console_scripts': ['harmonize=harmonize.__main__:main']
+        'console_scripts': ['harmonize=harmonize:main']
     },
     classifiers=[
         'Development Status :: 4 - Beta',
