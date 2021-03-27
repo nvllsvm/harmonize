@@ -32,6 +32,8 @@ class TestApp(unittest.TestCase):
         metadata = helpers.ffprobe.get_metadata(target_dir / 'audio.mp3')
 
         self.assertEqual('mp3', metadata['format']['format_name'])
+        self.assertEqual(1, len(metadata['streams']))
+        self.assertEqual('mp3', metadata['streams'][0]['codec_name'])
         # mp3 will not be exact duration as input
         self.assertTrue(1 <= float(metadata['format']['duration']) <= 1.1)
 
