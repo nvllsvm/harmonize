@@ -10,3 +10,4 @@ dist/
 env/
 htmlcov/
 /.pytest_cache
+/tests/tmp
