@@ -64,3 +64,32 @@ class TestApp(unittest.TestCase):
         # TODO test output
         # self.assertEqual(proc.stderr, b'')
         # self.assertEqual(proc.stdout, b'')
+
+    def test_transcodes_multiple(self):
+        source_dir = TMP / 'source'
+        source_dir.mkdir()
+        target_dir = TMP / 'target'
+
+        for duration in range(1, 4):
+            helpers.ffmpeg.generate_silence(
+                duration, source_dir / f'{duration}.flac')
+
+        subprocess.run(
+            ['harmonize', str(source_dir), str(target_dir)],
+            stderr=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            check=True)
+
+        for duration in range(1, 4):
+            metadata = helpers.ffprobe.get_metadata(
+                target_dir / f'{duration}.mp3')
+
+            self.assertEqual('mp3', metadata['format']['format_name'])
+            self.assertEqual(1, len(metadata['streams']))
+            self.assertEqual('mp3', metadata['streams'][0]['codec_name'])
+            # mp3 will not be exact duration as input
+            self.assertTrue(duration <= float(metadata['format']['duration']) <= duration + 0.1)  # noqa: E501
+
+        # TODO test output
+        # self.assertEqual(proc.stderr, b'')
+        # self.assertEqual(proc.stdout, b'')
