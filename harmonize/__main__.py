@@ -1,6 +1,7 @@
 import argparse
 import concurrent.futures
 import contextlib
+import fnmatch
 import functools
 import logging
 import os
@@ -24,13 +25,14 @@ except pkg_resources.DistributionNotFound:
 
 class Targets:
 
-    def __init__(self, source_base, target_base, target_codec):
+    def __init__(self, source_base, target_base, target_codec, exclude):
         """
         :param pathlib.Path base: Base path for all targets
         """
         self.target_base = target_base
         self.source_base = source_base
         self.target_codec = target_codec
+        self.exclude = exclude
         self._paths = set()
 
     def build_target_path(self, source_path):
@@ -96,9 +98,15 @@ class Targets:
         LOGGER.info('Scanning "%s"', self.source_base)
         count = 0
         for path in _all_files(self.source_base):
-            target_path = self.build_target_path(path)
-            count += 1
-            yield path, target_path
+            excluded = False
+            for exclude in self.exclude:
+                if fnmatch.fnmatch(path, exclude):
+                    excluded = True
+
+            if not excluded:
+                target_path = self.build_target_path(path)
+                count += 1
+                yield path, target_path
         LOGGER.info('Scanned %d items', count)
 
 
@@ -225,6 +233,9 @@ def main():
         '--version', action='version', version=VERSION,
     )
     parser.add_argument(
+        '--exclude', metavar='PATTERN', action='append',
+        help='ignore files matching this pattern')
+    parser.add_argument(
         'source', type=pathlib.Path, help='Source directory')
     parser.add_argument(
         'target', type=pathlib.Path, help='Target directory')
@@ -237,7 +248,9 @@ def main():
 
     encoder = functools.partial(
         _CODEC_ENCODERS[args.codec], options=encoder_options)
-    targets = Targets(args.source, args.target, args.codec)
+    targets = Targets(
+        args.source, args.target, args.codec,
+        exclude=args.exclude)
     with concurrent.futures.ProcessPoolExecutor(args.num_processes) as pool:
         futures = [
             pool.submit(sync_file, source, target, encoder)
