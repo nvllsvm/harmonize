@@ -87,14 +87,20 @@ class TestApp(unittest.TestCase):
             stdout=subprocess.PIPE,
             check=True)
         self.assertEqual(proc.stdout, b'')
+
+        stderr = proc.stderr.decode().splitlines()
         self.assertEqual(
-            proc.stderr.decode(),
-            (f'Scanning "{source_dir}"\n'
-             'Scanned 3 items\n'
-             f'Transcoding {source_dir}/1.flac\n'
-             f'Transcoding {source_dir}/2.flac\n'
-             f'Transcoding {source_dir}/3.flac\n'
-             'Processing complete\n'))
+            stderr[0:2],
+            [f'Scanning "{source_dir}"',
+             'Scanned 3 items'])
+        self.assertEqual(
+            sorted(stderr[2:5]),
+            [f'Transcoding {source_dir}/1.flac',
+             f'Transcoding {source_dir}/2.flac',
+             f'Transcoding {source_dir}/3.flac'])
+        self.assertEqual(
+            stderr[5],
+            'Processing complete')
 
         for duration in range(1, 4):
             metadata = helpers.ffprobe.get_metadata(
