@@ -32,7 +32,9 @@ class Targets:
         self.target_base = target_base
         self.source_base = source_base
         self.target_codec = target_codec
-        self.exclude = exclude
+        self.exclude = set()
+        if exclude:
+            self.exclude.update(exclude)
         self._paths = set()
 
     def build_target_path(self, source_path):
