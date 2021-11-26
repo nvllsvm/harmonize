@@ -1,34 +1,40 @@
+import asyncio
 import os
-import subprocess
 
 
-def lame(stdin_pipe, target, options=[]):
-    encode = subprocess.Popen(
-        ['lame', '--quiet', *[str(o) for o in options], '-', target],
+async def lame(stdin_pipe, target, options=[]):
+    proc = await asyncio.create_subprocess_exec(
+        'lame', '--quiet', *[str(o) for o in options], '-', target,
         stdin=stdin_pipe,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-    )
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE)
     os.close(stdin_pipe)
-    encode.wait()
+
+    await proc.wait()
 
     # Errors happen even if exit code is 0
-    stderr = encode.stderr.read()
-    if encode.returncode or stderr:
-        raise subprocess.CalledProcessError(
-            encode.returncode,
-            encode.args,
-            output=encode.stdout.read(),
-            encode=stderr
+    stderr = await proc.stderr.read()
+    if proc.returncode or stderr:
+        raise asyncio.subprocess.CalledProcessError(
+            proc.returncode,
+            proc.args,
+            output=proc.stdout.read(),
+            proc=stderr
         )
 
 
-def opus(stdin_pipe, target, options=[]):
-    subprocess.run(
-        ['opusenc', '--quiet', *[str(o) for o in options], '-', target],
-        stdin=stdin_pipe,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        check=True
-    )
+async def opus(stdin_pipe, target, options=[]):
+    proc = await asyncio.create_subprocess_exec(
+        'opusenc', '--quiet', *[str(o) for o in options], '-', target,
+        stdin=stdin_pipe)
     os.close(stdin_pipe)
+
+    await proc.wait()
+
+    if proc.returncode:
+        raise asyncio.subprocess.CalledProcessError(
+            proc.returncode,
+            proc.args,
+            output=await proc.stdout.read(),
+            proc=await proc.stderr.read(),
+        )

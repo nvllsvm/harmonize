@@ -1,13 +1,13 @@
+import asyncio
 import contextlib
 import logging
 import os
-import subprocess
 
 LOGGER = logging.getLogger(__name__)
 
 
-@contextlib.contextmanager
-def flac(path):
+@contextlib.asynccontextmanager
+async def flac(path):
     """Decode a FLAC file
 
     Decodes through any errors.
@@ -16,21 +16,21 @@ def flac(path):
     """
     read_pipe, write_pipe = os.pipe()
 
-    process = subprocess.Popen(
-        ['flac', '-csd', path],
+    proc = await asyncio.create_subprocess_exec(
+        'flac', '-csd', path,
         stdout=write_pipe,
-        stderr=subprocess.PIPE,
-    )
+        stderr=asyncio.subprocess.PIPE)
+
     os.close(write_pipe)
 
     yield read_pipe
-    process.wait()
+    await proc.wait()
     # Decode errors may are non-fatal, but may indicate a problem
-    stderr = process.stderr.read()
-    if process.returncode:
-        raise subprocess.CalledProcessError(
-            process.returncode,
-            process.args,
+    stderr = await proc.stderr.read()
+    if proc.returncode:
+        raise asyncio.subprocess.CalledProcessError(
+            proc.returncode,
+            proc.args,
             stderr=stderr
         )
     if stderr:

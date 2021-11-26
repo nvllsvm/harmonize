@@ -1,5 +1,5 @@
 import argparse
-import concurrent.futures
+import asyncio
 import contextlib
 import fnmatch
 import functools
@@ -125,7 +125,7 @@ def _all_files(root):
     return files
 
 
-def sync_file(source, target, encoder):
+async def sync_file(source, target, encoder):
     """Synchronize source file with target if out-of-sync
 
     :param pathlib.Path source:
@@ -140,7 +140,7 @@ def sync_file(source, target, encoder):
     target.parent.mkdir(parents=True, exist_ok=True)
     with TempPath(dir=target.parent, suffix='.temp') as temp_target:
         if source.suffix.lower() == '.flac':
-            transcode(decoders.flac, encoder, source, temp_target)
+            await transcode(decoders.flac, encoder, source, temp_target)
             copy_audio_metadata(source, temp_target)
         else:
             copy(source, temp_target)
@@ -199,7 +199,7 @@ def copy_audio_metadata(source, target):
     target_metadata.save()
 
 
-def transcode(decoder, encoder, source, target):
+async def transcode(decoder, encoder, source, target):
     """Transcode a FLAC file to MP3
 
     :param pathlib.Path source:
@@ -207,14 +207,75 @@ def transcode(decoder, encoder, source, target):
     """
     LOGGER.info('Transcoding %s', source)
     target.parent.mkdir(parents=True, exist_ok=True)
-    with decoder(source) as decoded:
-        encoder(decoded, target)
+    async with decoder(source) as decoded:
+        await encoder(decoded, target)
 
 
 _CODEC_ENCODERS = {
     'mp3': encoders.lame,
     'opus': encoders.opus
 }
+
+
+class AsyncExecutor:
+    def __init__(self, max_pending=None):
+        self._max_pending = max_pending
+        self._queued = []
+        self._pending = set()
+
+    def submit(self, func, *args, **kwargs):
+        self._queued.append((func, args, kwargs))
+        try:
+            asyncio.get_running_loop()
+        except RuntimeError:
+            pass
+        else:
+            self._fill()
+
+    async def as_completed(self):
+        while self._queued or self._pending:
+            self._fill()
+
+            done, self._pending = await asyncio.wait(
+                self._pending, return_when=asyncio.FIRST_COMPLETED)
+
+            for result in done:
+                yield result
+
+    def _fill(self):
+        for _ in range(self._max_pending - len(self._pending)):
+            if not self._queued:
+                return
+            func, args, kwargs = self._queued.pop()
+            self._pending.add(asyncio.create_task(func(*args, **kwargs)))
+
+
+async def run(executor):
+    async for result in executor.as_completed():
+        try:
+            result = result.result()
+        except Exception as e:
+            print('error', type(e).__name__, e)
+        else:
+            print('slept', result)
+
+
+async def async_run(args, encoder_options):
+    encoder = functools.partial(
+        _CODEC_ENCODERS[args.codec], options=encoder_options)
+    targets = Targets(
+        args.source, args.target, args.codec,
+        exclude=args.exclude)
+
+    executor = AsyncExecutor(args.num_processes)
+    for source, target in sorted(targets._get_paths()):
+        executor.submit(sync_file, source, target, encoder)
+    async for result in executor.as_completed():
+        result.result()
+
+    targets.sanitize()
+
+    LOGGER.info('Processing complete')
 
 
 def main():
@@ -248,21 +309,7 @@ def main():
         format='%(message)s',
         level=logging.WARNING if args.quiet else logging.INFO)
 
-    encoder = functools.partial(
-        _CODEC_ENCODERS[args.codec], options=encoder_options)
-    targets = Targets(
-        args.source, args.target, args.codec,
-        exclude=args.exclude)
-    with concurrent.futures.ProcessPoolExecutor(args.num_processes) as pool:
-        futures = [
-            pool.submit(sync_file, source, target, encoder)
-            for source, target in sorted(targets._get_paths())
-        ]
-        for future in concurrent.futures.as_completed(futures):
-            future.result()
-    targets.sanitize()
-
-    LOGGER.info('Processing complete')
+    asyncio.run(async_run(args, encoder_options))
 
 
 if __name__ == '__main__':
