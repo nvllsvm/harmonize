@@ -1,5 +1,6 @@
 import contextlib
 import logging
+import os
 import subprocess
 
 LOGGER = logging.getLogger(__name__)
@@ -13,12 +14,16 @@ def flac(path):
 
     :param pathlib.Path path: The FLAC file path
     """
+    read_pipe, write_pipe = os.pipe()
+
     process = subprocess.Popen(
         ['flac', '-csd', path],
-        stdout=subprocess.PIPE,
+        stdout=write_pipe,
         stderr=subprocess.PIPE,
     )
-    yield process.stdout
+    os.close(write_pipe)
+
+    yield read_pipe
     process.wait()
     # Decode errors may are non-fatal, but may indicate a problem
     stderr = process.stderr.read()
