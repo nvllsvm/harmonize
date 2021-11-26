@@ -23,11 +23,18 @@ class TestApp(unittest.TestCase):
         target_dir = TMP / 'target'
         helpers.ffmpeg.generate_silence(1, source_dir / 'audio.flac')
 
-        subprocess.run(
+        proc = subprocess.run(
             ['harmonize', str(source_dir), str(target_dir)],
             stderr=subprocess.PIPE,
             stdout=subprocess.PIPE,
             check=True)
+        self.assertEqual(proc.stdout, b'')
+        self.assertEqual(
+            proc.stderr,
+            (b'Scanning "/home/ar/code/github/nvllsvm/harmonize/tests/tmp/source"\n'
+             b'Scanned 1 items\n'
+             b'Transcoding /home/ar/code/github/nvllsvm/harmonize/tests/tmp/source/audio.flac\n'
+             b'Processing complete\n'))
 
         metadata = helpers.ffprobe.get_metadata(target_dir / 'audio.mp3')
 
@@ -37,21 +44,24 @@ class TestApp(unittest.TestCase):
         # mp3 will not be exact duration as input
         self.assertTrue(1 <= float(metadata['format']['duration']) <= 1.1)
 
-        # TODO test output
-        # self.assertEqual(proc.stderr, b'')
-        # self.assertEqual(proc.stdout, b'')
-
     def test_transcodes_flac_to_opus(self):
         source_dir = TMP / 'source'
         source_dir.mkdir()
         target_dir = TMP / 'target'
         helpers.ffmpeg.generate_silence(1, source_dir / 'audio.flac')
 
-        subprocess.run(
+        proc = subprocess.run(
             ['harmonize', '--codec', 'opus', str(source_dir), str(target_dir)],
             stderr=subprocess.PIPE,
             stdout=subprocess.PIPE,
             check=True)
+        self.assertEqual(proc.stdout, b'')
+        self.assertEqual(
+            proc.stderr,
+            (b'Scanning "/home/ar/code/github/nvllsvm/harmonize/tests/tmp/source"\n'
+             b'Scanned 1 items\n'
+             b'Transcoding /home/ar/code/github/nvllsvm/harmonize/tests/tmp/source/audio.flac\n'
+             b'Processing complete\n'))
 
         metadata = helpers.ffprobe.get_metadata(target_dir / 'audio.opus')
 
@@ -60,10 +70,6 @@ class TestApp(unittest.TestCase):
         self.assertEqual('opus', metadata['streams'][0]['codec_name'])
         # mp3 will not be exact duration as input
         self.assertTrue(1 <= float(metadata['format']['duration']) <= 1.1)
-
-        # TODO test output
-        # self.assertEqual(proc.stderr, b'')
-        # self.assertEqual(proc.stdout, b'')
 
     def test_transcodes_multiple(self):
         source_dir = TMP / 'source'
@@ -74,11 +80,20 @@ class TestApp(unittest.TestCase):
             helpers.ffmpeg.generate_silence(
                 duration, source_dir / f'{duration}.flac')
 
-        subprocess.run(
+        proc = subprocess.run(
             ['harmonize', str(source_dir), str(target_dir)],
             stderr=subprocess.PIPE,
             stdout=subprocess.PIPE,
             check=True)
+        self.assertEqual(proc.stdout, b'')
+        self.assertEqual(
+            proc.stderr,
+            (b'Scanning "/home/ar/code/github/nvllsvm/harmonize/tests/tmp/source"\n'
+             b'Scanned 3 items\n'
+             b'Transcoding /home/ar/code/github/nvllsvm/harmonize/tests/tmp/source/1.flac\n'
+             b'Transcoding /home/ar/code/github/nvllsvm/harmonize/tests/tmp/source/2.flac\n'
+             b'Transcoding /home/ar/code/github/nvllsvm/harmonize/tests/tmp/source/3.flac\n'
+             b'Processing complete\n'))
 
         for duration in range(1, 4):
             metadata = helpers.ffprobe.get_metadata(
@@ -89,7 +104,3 @@ class TestApp(unittest.TestCase):
             self.assertEqual('mp3', metadata['streams'][0]['codec_name'])
             # mp3 will not be exact duration as input
             self.assertTrue(duration <= float(metadata['format']['duration']) <= duration + 0.1)  # noqa: E501
-
-        # TODO test output
-        # self.assertEqual(proc.stderr, b'')
-        # self.assertEqual(proc.stdout, b'')
