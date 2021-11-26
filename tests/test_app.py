@@ -21,7 +21,8 @@ class TestApp(unittest.TestCase):
         source_dir = TMP / 'source'
         source_dir.mkdir()
         target_dir = TMP / 'target'
-        helpers.ffmpeg.generate_silence(1, source_dir / 'audio.flac')
+        audio_file = source_dir / 'audio.flac'
+        helpers.ffmpeg.generate_silence(1, audio_file)
 
         proc = subprocess.run(
             ['harmonize', str(source_dir), str(target_dir)],
@@ -30,11 +31,11 @@ class TestApp(unittest.TestCase):
             check=True)
         self.assertEqual(proc.stdout, b'')
         self.assertEqual(
-            proc.stderr,
-            (b'Scanning "/home/ar/code/github/nvllsvm/harmonize/tests/tmp/source"\n'
-             b'Scanned 1 items\n'
-             b'Transcoding /home/ar/code/github/nvllsvm/harmonize/tests/tmp/source/audio.flac\n'
-             b'Processing complete\n'))
+            proc.stderr.decode(),
+            (f'Scanning "{source_dir}"\n'
+             'Scanned 1 items\n'
+             f'Transcoding {audio_file}\n'
+             'Processing complete\n'))
 
         metadata = helpers.ffprobe.get_metadata(target_dir / 'audio.mp3')
 
@@ -57,11 +58,11 @@ class TestApp(unittest.TestCase):
             check=True)
         self.assertEqual(proc.stdout, b'')
         self.assertEqual(
-            proc.stderr,
-            (b'Scanning "/home/ar/code/github/nvllsvm/harmonize/tests/tmp/source"\n'
-             b'Scanned 1 items\n'
-             b'Transcoding /home/ar/code/github/nvllsvm/harmonize/tests/tmp/source/audio.flac\n'
-             b'Processing complete\n'))
+            proc.stderr.decode(),
+            (f'Scanning "{source_dir}"\n'
+             'Scanned 1 items\n'
+             f'Transcoding {source_dir}/audio.flac\n'
+             'Processing complete\n'))
 
         metadata = helpers.ffprobe.get_metadata(target_dir / 'audio.opus')
 
@@ -87,13 +88,13 @@ class TestApp(unittest.TestCase):
             check=True)
         self.assertEqual(proc.stdout, b'')
         self.assertEqual(
-            proc.stderr,
-            (b'Scanning "/home/ar/code/github/nvllsvm/harmonize/tests/tmp/source"\n'
-             b'Scanned 3 items\n'
-             b'Transcoding /home/ar/code/github/nvllsvm/harmonize/tests/tmp/source/1.flac\n'
-             b'Transcoding /home/ar/code/github/nvllsvm/harmonize/tests/tmp/source/2.flac\n'
-             b'Transcoding /home/ar/code/github/nvllsvm/harmonize/tests/tmp/source/3.flac\n'
-             b'Processing complete\n'))
+            proc.stderr.decode(),
+            (f'Scanning "{source_dir}"\n'
+             'Scanned 3 items\n'
+             f'Transcoding {source_dir}/1.flac\n'
+             f'Transcoding {source_dir}/2.flac\n'
+             f'Transcoding {source_dir}/3.flac\n'
+             'Processing complete\n'))
 
         for duration in range(1, 4):
             metadata = helpers.ffprobe.get_metadata(
