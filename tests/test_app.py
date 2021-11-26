@@ -17,6 +17,30 @@ class TestApp(unittest.TestCase):
             pass
         TMP.mkdir()
 
+    def test_copies_other_file_type(self):
+        source_dir = TMP / 'source'
+        source_dir.mkdir()
+        target_dir = TMP / 'target'
+        text_file = source_dir / 'other.txt'
+        text_file.write_text('test file')
+
+        proc = subprocess.run(
+            ['harmonize', str(source_dir), str(target_dir)],
+            stderr=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            check=True)
+        self.assertEqual(proc.stdout, b'')
+        self.assertEqual(
+            proc.stderr.decode(),
+            (f'Scanning "{source_dir}"\n'
+             'Scanned 1 items\n'
+             f'Copying {text_file}\n'
+             'Processing complete\n'))
+
+        self.assertEqual(
+            text_file.read_text(),
+            (target_dir / 'other.txt').read_text())
+
     def test_transcodes_flac_to_mp3(self):
         source_dir = TMP / 'source'
         source_dir.mkdir()
@@ -72,10 +96,13 @@ class TestApp(unittest.TestCase):
         # mp3 will not be exact duration as input
         self.assertTrue(1 <= float(metadata['format']['duration']) <= 1.1)
 
-    def test_transcodes_multiple(self):
+    def test_multiple_mixed_audio_and_other_files(self):
         source_dir = TMP / 'source'
         source_dir.mkdir()
         target_dir = TMP / 'target'
+
+        text_file = source_dir / 'other.txt'
+        text_file.write_text('test file')
 
         for duration in range(1, 4):
             helpers.ffmpeg.generate_silence(
@@ -92,14 +119,15 @@ class TestApp(unittest.TestCase):
         self.assertEqual(
             stderr[0:2],
             [f'Scanning "{source_dir}"',
-             'Scanned 3 items'])
+             'Scanned 4 items'])
         self.assertEqual(
-            sorted(stderr[2:5]),
-            [f'Transcoding {source_dir}/1.flac',
+            sorted(stderr[2:6]),
+            [f'Copying {source_dir}/other.txt',
+             f'Transcoding {source_dir}/1.flac',
              f'Transcoding {source_dir}/2.flac',
              f'Transcoding {source_dir}/3.flac'])
         self.assertEqual(
-            stderr[5],
+            stderr[6],
             'Processing complete')
 
         for duration in range(1, 4):
@@ -111,3 +139,7 @@ class TestApp(unittest.TestCase):
             self.assertEqual('mp3', metadata['streams'][0]['codec_name'])
             # mp3 will not be exact duration as input
             self.assertTrue(duration <= float(metadata['format']['duration']) <= duration + 0.1)  # noqa: E501
+
+        self.assertEqual(
+            text_file.read_text(),
+            (target_dir / 'other.txt').read_text())
