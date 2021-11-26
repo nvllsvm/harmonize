@@ -3,6 +3,7 @@ import concurrent.futures
 import contextlib
 import fnmatch
 import functools
+import importlib.metadata
 import logging
 import os
 import pathlib
@@ -11,15 +12,14 @@ import tempfile
 
 import mutagen
 import mutagen.mp3
-import pkg_resources
 
 from . import decoders, encoders
 
 LOGGER = logging.getLogger('harmonize')
 
 try:
-    VERSION = pkg_resources.get_distribution('harmonize').version
-except pkg_resources.DistributionNotFound:
+    VERSION = importlib.metadata.version('harmonize')
+except importlib.metadata.PackageNotFoundError:
     VERSION = 'unknown'
 
 
