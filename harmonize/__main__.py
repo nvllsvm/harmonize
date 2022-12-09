@@ -288,7 +288,7 @@ def main():
         '-n', dest='num_processes',
         help='Number of processes to use',
         type=int,
-        default=1)
+        default=os.cpu_count())
     parser.add_argument(
         '-q', '--quiet', action='store_true',
         help='suppress informational output')
