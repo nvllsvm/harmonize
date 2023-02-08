@@ -43,16 +43,19 @@ class Targets:
         :param pathlib.Path source_path: FLAC path
         :rtype: pathlib.Path
         """
-        split_name = source_path.name.split('.')
-        if len(split_name) > 1 and split_name[-1].lower() == 'flac':
-            split_name[-1] = self.target_codec
-            name = '.'.join(split_name)
-            if pathlib.Path(source_path.parent, name).exists():
-                # TODO: not sure how to handle this
-                LOGGER.error('Duplicate file found: %s', source_path)
-                raise NotImplementedError
-        else:
+        if source_path.is_dir():
             name = source_path.name
+        else:
+            split_name = source_path.name.split('.')
+            if len(split_name) > 1 and split_name[-1].lower() == 'flac':
+                split_name[-1] = self.target_codec
+                name = '.'.join(split_name)
+                if pathlib.Path(source_path.parent, name).exists():
+                    # TODO: not sure how to handle this
+                    LOGGER.error('Duplicate file found: %s', source_path)
+                    raise NotImplementedError
+            else:
+                name = source_path.name
 
         target_path = self.target_base.joinpath(
             source_path.parent.relative_to(self.source_base), name)
@@ -72,24 +75,10 @@ class Targets:
                     path = pathlib.Path(root, path_str)
                     if path not in self._paths:
                         LOGGER.info('Deleting %s', path)
-                        self._delete_if_exists(path)
+                        _delete_if_exists(path)
             else:
                 LOGGER.info('Deleting %s', root_path)
-                self._delete_if_exists(root_path)
-
-    @staticmethod
-    def _delete_if_exists(path):
-        """Delete a file or directory if it exists
-
-        :param pathlib.Path path:
-        """
-        try:
-            if path.is_file():
-                path.unlink()
-            else:
-                shutil.rmtree(path)
-        except FileNotFoundError:
-            pass
+                _delete_if_exists(root_path)
 
     def _get_paths(self):
         """Generator which returns a tuple of source and target paths
@@ -99,7 +88,7 @@ class Targets:
         """
         LOGGER.info('Scanning "%s"', self.source_base)
         count = 0
-        for path in _all_files(self.source_base):
+        for path in _all_paths(self.source_base):
             excluded = False
             for exclude in self.exclude:
                 if fnmatch.fnmatch(path, exclude):
@@ -112,38 +101,54 @@ class Targets:
         LOGGER.info('Scanned %d items', count)
 
 
-def _all_files(root):
+def _delete_if_exists(path):
+    """Delete a file or directory if it exists
+
+    :param pathlib.Path path:
+    """
+    try:
+        if path.is_file():
+            path.unlink()
+        else:
+            shutil.rmtree(path)
+    except FileNotFoundError:
+        pass
+
+
+def _all_paths(root):
     """Return a list of all files under a root path"""
     stack = [root]
     while stack:
         for path in stack.pop().iterdir():
-            if path.is_file():
-                yield path
-            elif path.is_dir():
+            if path.is_dir():
                 stack.append(path)
+            yield path
 
 
-async def sync_file(source, target, encoder):
-    """Synchronize source file with target if out-of-sync
+async def sync_path(source, target, encoder):
+    """Synchronize source path with target if out-of-sync
 
     :param pathlib.Path source:
     :param pathlib.Path target:
     """
-    # lstat the source only as source file may change during transcode
-    source_lstat = source.lstat()
+    if source.is_dir():
+        copy(source, target)
+    else:
+        # lstat the source only as source file may change during transcode
+        source_lstat = source.lstat()
 
-    if target.exists() and target.lstat().st_mtime == source_lstat.st_mtime:
-        return
+        if target.exists() and target.lstat().st_mtime == source_lstat.st_mtime:
+            return
 
-    target.parent.mkdir(parents=True, exist_ok=True)
-    with TempPath(dir=target.parent, suffix='.temp') as temp_target:
-        if source.suffix.lower() == '.flac':
-            await transcode(decoders.flac, encoder, source, temp_target)
-            copy_audio_metadata(source, temp_target)
-        else:
-            copy(source, temp_target)
-        copy_path_attr(source_lstat, temp_target)
-        temp_target.rename(target)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        with TempPath(dir=target.parent, suffix='.temp') as temp_target:
+            if source.suffix.lower() == '.flac':
+                await transcode(decoders.flac, encoder, source, temp_target)
+                copy_audio_metadata(source, temp_target)
+            else:
+                copy(source, temp_target)
+            copy_path_attr(source_lstat, temp_target)
+            temp_target.rename(target)
 
 
 def copy_path_attr(source_lstat, target):
@@ -162,9 +167,18 @@ def copy(source, target):
     :param pathlib.Path source: Source path
     :param pathlib.Path source: Target path
     """
-    LOGGER.info('Copying %s', source)
-    target.parent.mkdir(parents=True, exist_ok=True)
-    shutil.copy(source, target)
+    if source.is_dir():
+        if target.exists():
+            if target.is_dir():
+                return
+            else:
+                _delete_if_exists(target)
+        LOGGER.info('Creating %s', source)
+        target.mkdir(exist_ok=True, parents=True)
+    else:
+        LOGGER.info('Copying %s', source)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy(source, target)
 
 
 @contextlib.contextmanager
@@ -271,7 +285,7 @@ async def async_run(args, encoder_options):
 
     executor = AsyncExecutor(args.num_processes)
     for source, target in sorted(targets._get_paths()):
-        executor.submit(sync_file, source, target, encoder)
+        executor.submit(sync_path, source, target, encoder)
     async for result in executor.as_completed():
         result.result()
 
