@@ -132,9 +132,9 @@ async def sync_file(source, target, encoder):
     :param pathlib.Path target:
     """
     # lstat the source only as source file may change during transcode
-    source_mtime = source.lstat().st_mtime
+    source_lstat = source.lstat()
 
-    if target.exists() and target.lstat().st_mtime == source_mtime:
+    if target.exists() and target.lstat().st_mtime == source_lstat.st_mtime:
         return
 
     target.parent.mkdir(parents=True, exist_ok=True)
@@ -144,12 +144,16 @@ async def sync_file(source, target, encoder):
             copy_audio_metadata(source, temp_target)
         else:
             copy(source, temp_target)
-        temp_target.chmod(source.stat().st_mode)
-        os.utime(
-            temp_target,
-            (temp_target.lstat().st_atime, source_mtime)
-        )
+        copy_path_attr(source_lstat, temp_target)
         temp_target.rename(target)
+
+
+def copy_path_attr(source_lstat, target):
+    target.chmod(source_lstat.st_mode)
+    os.utime(
+        target,
+        (target.lstat().st_atime, source_lstat.st_mtime)
+    )
 
 
 def copy(source, target):
