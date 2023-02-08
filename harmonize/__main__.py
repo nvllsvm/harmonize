@@ -114,15 +114,13 @@ class Targets:
 
 def _all_files(root):
     """Return a list of all files under a root path"""
-    files = []
     stack = [root]
     while stack:
         for path in stack.pop().iterdir():
             if path.is_file():
-                files.append(path)
+                yield path
             elif path.is_dir():
                 stack.append(path)
-    return files
 
 
 async def sync_file(source, target, encoder):
