@@ -47,7 +47,7 @@ class Targets:
             name = source_path.name
         else:
             split_name = source_path.name.split('.')
-            if len(split_name) > 1 and split_name[-1].lower() == 'flac':
+            if len(split_name) > 1 and split_name[-1].lower() in ('flac', 'mp3'):
                 split_name[-1] = self.target_codec
                 name = '.'.join(split_name)
                 if pathlib.Path(source_path.parent, name).exists():
@@ -144,6 +144,9 @@ async def sync_path(source, target, encoder):
         with TempPath(dir=target.parent, suffix='.temp') as temp_target:
             if source.suffix.lower() == '.flac':
                 await transcode(decoders.flac, encoder, source, temp_target)
+                copy_audio_metadata(source, temp_target)
+            elif source.suffix.lower() == '.mp3':
+                await transcode(decoders.mp3, encoder, source, temp_target)
                 copy_audio_metadata(source, temp_target)
             else:
                 copy(source, temp_target)
