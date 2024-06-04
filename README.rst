@@ -42,7 +42,6 @@ Installation
 ------------
 
 * `Arch Linux`_
-* `Docker`_
 * `PyPI`_
 
 If installing from `PyPI`_ or using the script directly, ensure the following
@@ -81,6 +80,5 @@ Usage
    :target: https://aur.archlinux.org/packages/harmonize
 .. _PyPI: https://pypi.org/pypi/harmonize
 .. _Arch Linux: https://aur.archlinux.org/packages/harmonize/
-.. _Docker: https://hub.docker.com/r/nvllsvm/harmonize/
 .. _mp3fs: https://khenriks.github.io/mp3fs/
 .. _rsync: https://rsync.samba.org/
