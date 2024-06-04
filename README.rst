@@ -1,7 +1,6 @@
 harmonize
 =========
-
-|PyPI Version|
+|PyPI Version| |AUR Version|
 
 Create and synchronize transcoded copies of audio folders.
 
@@ -78,6 +77,8 @@ Usage
 
 .. |PyPI Version| image:: https://img.shields.io/pypi/v/harmonize.svg?
    :target: https://pypi.org/pypi/harmonize
+.. |AUR Version| image:: https://img.shields.io/aur/version/harmonize.svg?
+   :target: https://aur.archlinux.org/packages/harmonize
 .. _PyPI: https://pypi.org/pypi/harmonize
 .. _Arch Linux: https://aur.archlinux.org/packages/harmonize/
 .. _Docker: https://hub.docker.com/r/nvllsvm/harmonize/
