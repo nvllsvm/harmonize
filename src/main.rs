@@ -9,7 +9,13 @@ use std::path::PathBuf;
 use clap::Parser;
 
 #[derive(Parser)]
-#[command(name = "harmonize", version)]
+#[command(
+    name = "harmonize",
+    version,
+    long_about = "Create and synchronize transcoded copies of audio folders.\n\n\
+                  source_exclude and target_exclude in the config use \
+                  gitignore pattern syntax."
+)]
 struct Cli {
     /// Config file path
     #[arg(long, required_unless_present = "stdin")]

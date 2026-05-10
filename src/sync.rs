@@ -4,7 +4,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
 use filetime::FileTime;
-use globset::Glob;
+use ignore::gitignore::{Gitignore, GitignoreBuilder};
 use tokio::sync::Semaphore;
 use tokio::task::JoinSet;
 
@@ -40,38 +40,44 @@ pub fn build_target_path(
     target_base.join(rel)
 }
 
-fn compile_patterns(patterns: &[String]) -> Vec<globset::GlobMatcher> {
-    patterns
-        .iter()
-        .filter_map(|p| Glob::new(p).ok().map(|g| g.compile_matcher()))
-        .collect()
+fn build_matcher(root: &Path, patterns: &[String]) -> Gitignore {
+    let mut b = GitignoreBuilder::new(root);
+    for p in patterns {
+        let _ = b.add_line(None, p);
+    }
+    b.build().unwrap_or_else(|_| Gitignore::empty())
 }
 
-fn matches_any(path: &str, patterns: &[globset::GlobMatcher]) -> bool {
-    patterns.iter().any(|p| p.is_match(path))
+fn is_excluded(matcher: &Gitignore, path: &Path, is_dir: bool) -> bool {
+    matcher
+        .matched_path_or_any_parents(path, is_dir)
+        .is_ignore()
 }
 
 fn walk(root: &Path) -> (Vec<PathBuf>, Vec<PathBuf>) {
     let mut files = Vec::new();
     let mut dirs = Vec::new();
-    let mut stack = vec![root.to_path_buf()];
-
-    while let Some(dir) = stack.pop() {
-        let entries = match std::fs::read_dir(&dir) {
-            Ok(e) => e,
-            Err(_) => continue,
-        };
-        for entry in entries.flatten() {
-            let path = entry.path();
-            if path.is_dir() {
-                dirs.push(path.clone());
-                stack.push(path);
-            } else {
-                files.push(path);
-            }
+    let walker = ignore::WalkBuilder::new(root)
+        .hidden(false)
+        .ignore(false)
+        .git_ignore(false)
+        .git_global(false)
+        .git_exclude(false)
+        .parents(false)
+        .require_git(false)
+        .build();
+    for entry in walker.flatten() {
+        let path = entry.path();
+        if path == root {
+            continue;
+        }
+        let is_dir = entry.file_type().map(|t| t.is_dir()).unwrap_or(false);
+        if is_dir {
+            dirs.push(path.to_path_buf());
+        } else {
+            files.push(path.to_path_buf());
         }
     }
-
     files.sort();
     dirs.sort();
     (files, dirs)
@@ -162,22 +168,47 @@ pub fn sanitize(config: &Config, known_targets: &HashSet<PathBuf>, known_dirs: &
         return;
     }
 
-    let target_patterns = compile_patterns(&config.target_exclude);
-    let (files, mut dirs) = walk(&config.target);
+    let matcher = build_matcher(&config.target, &config.target_exclude);
+
+    let walker = ignore::WalkBuilder::new(&config.target)
+        .hidden(false)
+        .ignore(false)
+        .git_ignore(false)
+        .git_global(false)
+        .git_exclude(false)
+        .parents(false)
+        .require_git(false)
+        .filter_entry(move |e| {
+            let is_dir = e.file_type().map(|t| t.is_dir()).unwrap_or(false);
+            !is_excluded(&matcher, e.path(), is_dir)
+        })
+        .build();
+
+    let mut files: Vec<PathBuf> = Vec::new();
+    let mut dirs: Vec<PathBuf> = Vec::new();
+    for entry in walker.flatten() {
+        let path = entry.path();
+        if path == config.target {
+            continue;
+        }
+        let is_dir = entry.file_type().map(|t| t.is_dir()).unwrap_or(false);
+        if is_dir {
+            dirs.push(path.to_path_buf());
+        } else {
+            files.push(path.to_path_buf());
+        }
+    }
+    files.sort();
+    dirs.sort();
 
     for entry in files {
         if known_targets.contains(&entry) {
             continue;
         }
-        let rel = entry
-            .strip_prefix(&config.target)
-            .map(|p| p.to_string_lossy())
-            .unwrap_or_default();
-        if matches_any(&rel, &target_patterns) {
-            continue;
-        }
         tracing::info!("Deleting {}", entry.display());
-        let _ = std::fs::remove_file(&entry);
+        if let Err(e) = std::fs::remove_file(&entry) {
+            tracing::warn!("Failed to delete {}: {}", entry.display(), e);
+        }
     }
 
     dirs.reverse();
@@ -185,7 +216,10 @@ pub fn sanitize(config: &Config, known_targets: &HashSet<PathBuf>, known_dirs: &
         if known_dirs.contains(&dir) {
             continue;
         }
-        let _ = std::fs::remove_dir(&dir);
+        tracing::info!("Removing directory {}", dir.display());
+        if let Err(e) = std::fs::remove_dir(&dir) {
+            tracing::warn!("Failed to remove directory {}: {}", dir.display(), e);
+        }
     }
 }
 
@@ -205,16 +239,12 @@ pub async fn run(config: Config, dry_run: bool, modify_window: i32) -> anyhow::R
     let mut known_dirs = HashSet::new();
 
     let (source_files, source_dirs) = walk(&config.source);
-    let source_patterns = compile_patterns(&config.source_exclude);
+    let source_matcher = build_matcher(&config.source, &config.source_exclude);
 
     // Collect work items before spawning so "Scanned N items" logs before task output
     let mut work_items: Vec<(PathBuf, PathBuf)> = Vec::new();
     for source_path in source_files {
-        let rel = source_path
-            .strip_prefix(&config.source)
-            .unwrap()
-            .to_string_lossy();
-        if matches_any(&rel, &source_patterns) {
+        if is_excluded(&source_matcher, &source_path, false) {
             continue;
         }
 
@@ -230,10 +260,10 @@ pub async fn run(config: Config, dry_run: bool, modify_window: i32) -> anyhow::R
     }
 
     for source_dir in source_dirs {
-        let rel_path = source_dir.strip_prefix(&config.source).unwrap();
-        if matches_any(&rel_path.to_string_lossy(), &source_patterns) {
+        if is_excluded(&source_matcher, &source_dir, true) {
             continue;
         }
+        let rel_path = source_dir.strip_prefix(&config.source).unwrap();
         let target_dir = config.target.join(rel_path);
         known_dirs.insert(target_dir.clone());
         if dry_run {
@@ -426,6 +456,138 @@ mod tests {
 
         assert!(target.join("keep.txt").exists());
         assert!(target.join("playlist.m3u").exists());
+    }
+
+    #[tokio::test]
+    async fn test_target_exclude_protects_directory() {
+        let tmp = tempfile::tempdir().unwrap();
+        let source = tmp.path().join("source");
+        let target = tmp.path().join("target");
+        fs::create_dir(&source).unwrap();
+        fs::create_dir(&target).unwrap();
+        fs::create_dir(target.join(".stfolder")).unwrap();
+        fs::write(target.join(".stfolder").join("marker"), "syncthing").unwrap();
+        fs::write(source.join("keep.txt"), "keep").unwrap();
+
+        let mut cfg = make_config(source, target.clone());
+        cfg.target_exclude = vec![".stfolder/".to_string()];
+        run(cfg, false, 0).await.unwrap();
+
+        assert!(target.join("keep.txt").exists());
+        assert!(target.join(".stfolder").is_dir());
+        assert!(target.join(".stfolder").join("marker").exists());
+    }
+
+    #[tokio::test]
+    async fn test_target_exclude_directory_no_trailing_slash() {
+        let tmp = tempfile::tempdir().unwrap();
+        let source = tmp.path().join("source");
+        let target = tmp.path().join("target");
+        fs::create_dir(&source).unwrap();
+        fs::create_dir(&target).unwrap();
+        fs::create_dir(target.join(".stfolder")).unwrap();
+        fs::write(target.join(".stfolder").join("marker"), "x").unwrap();
+
+        let mut cfg = make_config(source, target.clone());
+        cfg.target_exclude = vec![".stfolder".to_string()];
+        run(cfg, false, 0).await.unwrap();
+
+        assert!(target.join(".stfolder").is_dir());
+        assert!(target.join(".stfolder").join("marker").exists());
+    }
+
+    #[tokio::test]
+    async fn test_target_exclude_anchored_only_top_level() {
+        let tmp = tempfile::tempdir().unwrap();
+        let source = tmp.path().join("source");
+        let target = tmp.path().join("target");
+        fs::create_dir(&source).unwrap();
+        fs::create_dir(&target).unwrap();
+        fs::create_dir(target.join(".stfolder")).unwrap();
+        fs::write(target.join(".stfolder").join("m"), "x").unwrap();
+        fs::create_dir_all(target.join("sub").join(".stfolder")).unwrap();
+        fs::write(target.join("sub").join(".stfolder").join("m"), "x").unwrap();
+
+        let mut cfg = make_config(source, target.clone());
+        cfg.target_exclude = vec!["/.stfolder/".to_string()];
+        run(cfg, false, 0).await.unwrap();
+
+        assert!(target.join(".stfolder").is_dir());
+        assert!(target.join(".stfolder").join("m").exists());
+        assert!(!target.join("sub").join(".stfolder").exists());
+    }
+
+    #[tokio::test]
+    async fn test_target_exclude_unanchored_any_depth() {
+        let tmp = tempfile::tempdir().unwrap();
+        let source = tmp.path().join("source");
+        let target = tmp.path().join("target");
+        fs::create_dir(&source).unwrap();
+        fs::create_dir(&target).unwrap();
+        fs::create_dir(target.join(".stfolder")).unwrap();
+        fs::write(target.join(".stfolder").join("m"), "x").unwrap();
+        fs::create_dir_all(target.join("sub").join(".stfolder")).unwrap();
+        fs::write(target.join("sub").join(".stfolder").join("m"), "x").unwrap();
+
+        let mut cfg = make_config(source, target.clone());
+        cfg.target_exclude = vec![".stfolder/".to_string()];
+        run(cfg, false, 0).await.unwrap();
+
+        assert!(target.join(".stfolder").join("m").exists());
+        assert!(target.join("sub").join(".stfolder").join("m").exists());
+    }
+
+    #[tokio::test]
+    async fn test_source_exclude_anchored_top_level_only() {
+        let tmp = tempfile::tempdir().unwrap();
+        let source = tmp.path().join("source");
+        let target = tmp.path().join("target");
+        fs::create_dir(&source).unwrap();
+        fs::write(source.join("skip.log"), "x").unwrap();
+        fs::create_dir(source.join("sub")).unwrap();
+        fs::write(source.join("sub").join("keep.log"), "x").unwrap();
+
+        let mut cfg = make_config(source, target.clone());
+        cfg.source_exclude = vec!["/*.log".to_string()];
+        run(cfg, false, 0).await.unwrap();
+
+        assert!(!target.join("skip.log").exists());
+        assert!(target.join("sub").join("keep.log").exists());
+    }
+
+    #[tokio::test]
+    async fn test_source_exclude_internal_slash_anchored() {
+        let tmp = tempfile::tempdir().unwrap();
+        let source = tmp.path().join("source");
+        let target = tmp.path().join("target");
+        fs::create_dir_all(source.join("a").join("b")).unwrap();
+        fs::write(source.join("a").join("b").join("f.txt"), "x").unwrap();
+        fs::create_dir_all(source.join("nested").join("a").join("b")).unwrap();
+        fs::write(source.join("nested").join("a").join("b").join("f.txt"), "x").unwrap();
+
+        let mut cfg = make_config(source, target.clone());
+        cfg.source_exclude = vec!["a/b/f.txt".to_string()];
+        run(cfg, false, 0).await.unwrap();
+
+        assert!(!target.join("a").join("b").join("f.txt").exists());
+        assert!(target.join("nested").join("a").join("b").join("f.txt").exists());
+    }
+
+    #[tokio::test]
+    async fn test_source_exclude_negation() {
+        let tmp = tempfile::tempdir().unwrap();
+        let source = tmp.path().join("source");
+        let target = tmp.path().join("target");
+        fs::create_dir(&source).unwrap();
+        fs::write(source.join("a.log"), "x").unwrap();
+        fs::write(source.join("keep.log"), "x").unwrap();
+
+        let mut cfg = make_config(source, target.clone());
+        cfg.source_exclude = vec!["*.log".to_string(), "!keep.log".to_string()];
+        run(cfg, false, 0).await.unwrap();
+
+        assert!(!target.join("a.log").exists());
+        assert!(target.join("keep.log").exists());
     }
 
     #[tokio::test]

@@ -1,14 +1,48 @@
+# Harmonize syncs files from a source tree to a target tree, optionally
+# transcoding files along the way. Re-running keeps target in sync:
+# updated source files are re-processed and orphaned target files are
+# removed (subject to target_exclude).
+
 [harmonize]
+# Directory to read from. Not modified.
 source = "/media/source"
+
+# Directory to write to. Files not produced by this sync are deleted
+# during cleanup unless protected by target_exclude.
 target = "/media/target"
 
+# Files in source matching these patterns are skipped. Uses gitignore
+# pattern syntax: leading "/" anchors to source root, otherwise
+# matches at any depth. Trailing "/" matches directories only.
+source_exclude = [
+    "*.cue",  # any depth
+    "*.log",
+    "*.nfo",
+    "*.pdf",
+    "*.txt",
+]
+
+# Files/directories in target matching these patterns are preserved
+# during cleanup even if not produced by this sync. Same pattern
+# syntax as source_exclude.
+target_exclude = [
+    "/.stfolder",  # top-level only
+]
+
+# Converters run an external command to transform a source file into
+# a target file. "{input}" and "{output}" are substituted with paths.
 [converters.opus]
 command = ["ffmpeg", "-y", "-i", "{input}", "-c:a", "libopus", "-b:a", "128k", "{output}"]
 
 [converters.jpg]
 command = ["magick", "{input}", "-quality", "85", "-resize", "1920x1920>", "{output}"]
 
+# Mappings dispatch source files (by extension, lowercased) to a
+# converter. output_ext sets the target file extension; if omitted or
+# equal to the source extension, the extension is preserved.
+# Extensions not listed here are copied verbatim (unless excluded).
 [mappings]
 ".flac" = { converter = "opus", output_ext = ".opus" }
 ".mp3" = { converter = "opus", output_ext = ".opus" }
 ".png" = { converter = "jpg", output_ext = ".jpg" }
+".jpg" = { converter = "jpg", output_ext = ".jpg" }

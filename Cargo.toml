@@ -14,7 +14,7 @@ path = "src/main.rs"
 anyhow = "1"
 clap = { version = "4", features = ["derive"] }
 filetime = "0.2"
-globset = "0.4"
+ignore = "0.4"
 serde = { version = "1", features = ["derive"] }
 tempfile = "3"
 thiserror = "2"
